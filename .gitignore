@@ -1,0 +1,46 @@
+# ============================================
+# SIGA - .gitignore raíz
+# Cubre backend (Node) y frontend (Vite)
+# ============================================
+
+# Dependencias
+node_modules/
+
+# Builds
+dist/
+build/
+.vite/
+
+# Variables de entorno (NUNCA subir secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Prisma
+backend/prisma/migrations/dev.db*
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Coverage
+coverage/
+
+# Caches
+.cache/
+.parcel-cache/
+.turbo/
