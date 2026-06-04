@@ -14,25 +14,25 @@ import { MateriaCard } from './dashboard/MateriaCard';
 import { PanelCuatrimestre } from './dashboard/PanelCuatrimestre';
 import { PanelAcciones, type AccionRequerida } from './dashboard/PanelAcciones';
 
-// Pagina principal. Las materias salen de las inscripciones del alumno.
-// La asistencia y los avisos son datos ficticios por ahora porque ese modulo
-// todavia no esta en el backend.
 export function DashboardPage() {
   const { usuario } = useAuth();
+  const isAlumno = usuario?.rol === 'ALUMNO';
 
-  const alumno = useApi(() => alumnosApi.me(), []);
+  const alumno = useApi(
+    () => (isAlumno ? alumnosApi.me() : Promise.resolve(null)),
+    [isAlumno],
+  );
   const inscripciones = useApi(
     () =>
-      inscripcionesApi.list({
-        cicloLectivo: new Date().getFullYear(),
-        pageSize: 50,
-      }),
-    [],
+      isAlumno
+        ? inscripcionesApi.list({ cicloLectivo: new Date().getFullYear(), pageSize: 50 })
+        : Promise.resolve(null),
+    [isAlumno],
   );
   const constancias = useApi(() => constanciasApi.list({ pageSize: 5 }), []);
 
-  // Acciones requeridas — derivadas de los datos del backend.
   const acciones = useMemo<AccionRequerida[]>(() => {
+    if (!isAlumno) return [];
     const out: AccionRequerida[] = [];
     const pendientes = inscripciones.data?.items.filter((i) => i.estado === 'PENDIENTE') ?? [];
     pendientes.forEach((i) => {
@@ -55,10 +55,84 @@ export function DashboardPage() {
       });
     });
     return out;
-  }, [inscripciones.data, constancias.data]);
+  }, [inscripciones.data, constancias.data, isAlumno]);
 
+  // ── Dashboard para staff / admin ──────────────────────────────────────────
+  if (!isAlumno) {
+    if (constancias.loading) return <FullPageLoader />;
+    return (
+      <div className="max-w-screen-2xl mx-auto">
+        <p className="text-xs text-slate-500 mb-2">SIGA / Inicio</p>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-slate-900">
+            Bienvenido, {usuario?.nombre} {usuario?.apellido}
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm">
+            Rol: {usuario?.rol} · Sistema Integral de Gestión Académica
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card>
+            <h3 className="font-semibold text-slate-900 mb-1">Alumnos</h3>
+            <p className="text-sm text-slate-500 mb-3">
+              Gestión de legajos y datos académicos
+            </p>
+            <Link
+              to="/legajo"
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
+              Ver sección <ArrowRight size={14} />
+            </Link>
+          </Card>
+          <Card>
+            <h3 className="font-semibold text-slate-900 mb-1">Materias</h3>
+            <p className="text-sm text-slate-500 mb-3">
+              Catálogo, correlatividades y cupos
+            </p>
+            <Link
+              to="/materias"
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
+              Ver materias <ArrowRight size={14} />
+            </Link>
+          </Card>
+          <Card>
+            <h3 className="font-semibold text-slate-900 mb-1">Constancias</h3>
+            <p className="text-sm text-slate-500 mb-3">
+              Solicitudes y emisión de constancias
+            </p>
+            <Link
+              to="/constancias"
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
+              Ver constancias <ArrowRight size={14} />
+            </Link>
+          </Card>
+        </div>
+
+        {constancias.data && constancias.data.items.length > 0 && (
+          <Card>
+            <h3 className="font-semibold text-slate-900 mb-4">Constancias recientes</h3>
+            <ul className="divide-y divide-slate-100">
+              {constancias.data.items.map((c) => (
+                <li key={c.id} className="py-3 flex items-center justify-between text-sm">
+                  <span className="text-slate-900">
+                    {c.tipo.replace(/_/g, ' ')} —{' '}
+                    {c.alumno ? `${c.alumno.apellido}, ${c.alumno.nombre}` : '—'}
+                  </span>
+                  <span className="text-xs text-slate-500">{c.estado}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // ── Dashboard para alumnos ────────────────────────────────────────────────
   if (alumno.loading || inscripciones.loading) return <FullPageLoader />;
-
   if (alumno.error) return <ErrorAlert message={alumno.error} />;
   if (!alumno.data || !usuario) return null;
 
@@ -88,16 +162,17 @@ export function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_22rem] gap-6">
-        {/* Columna principal */}
         <div className="space-y-6">
           <Card>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-semibold text-slate-900">Mi cursada</h3>
                 <p className="text-xs text-slate-500">
-                  {cursadas.length} {cursadas.length === 1 ? 'materia inscripta' : 'materias inscriptas'}
+                  {cursadas.length}{' '}
+                  {cursadas.length === 1 ? 'materia inscripta' : 'materias inscriptas'}
                   {' · '}
-                  {new Date().getMonth() < 6 ? '1°' : '2°'} cuatr. {new Date().getFullYear()}
+                  {new Date().getMonth() < 6 ? '1°' : '2°'} cuatr.{' '}
+                  {new Date().getFullYear()}
                 </p>
               </div>
               <Link to="/legajo" className="btn-ghost text-sm">
@@ -135,7 +210,6 @@ export function DashboardPage() {
           </Card>
         </div>
 
-        {/* Columna lateral */}
         <aside className="space-y-6">
           <PanelCuatrimestre
             asistencia={87}
@@ -155,7 +229,6 @@ export function DashboardPage() {
   );
 }
 
-/** Lista compacta de mesas (próximos finales) usando inscripciones MESA_EXAMEN. */
 function ListaMesas() {
   const mesas = useApi(
     () =>
@@ -169,9 +242,7 @@ function ListaMesas() {
   if (mesas.loading) return <Spinner />;
   if (!mesas.data?.items.length) {
     return (
-      <p className="text-sm text-slate-500 italic">
-        No hay mesas registradas todavía.
-      </p>
+      <p className="text-sm text-slate-500 italic">No hay mesas registradas todavía.</p>
     );
   }
 
@@ -191,8 +262,12 @@ function ListaMesas() {
               </p>
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900">{m.materia?.nombre ?? '—'}</p>
-              <p className="text-xs text-slate-500">{m.observaciones ?? 'Mesa de examen final'}</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {m.materia?.nombre ?? '—'}
+              </p>
+              <p className="text-xs text-slate-500">
+                {m.observaciones ?? 'Mesa de examen final'}
+              </p>
             </div>
           </div>
           <span className="text-xs text-slate-500">{m.estado}</span>
