@@ -1,18 +1,28 @@
+import { useState } from 'react';
+import { Search } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
+import { useAuth } from '../hooks/useAuth';
 import { alumnosApi } from '../api/alumnos.api';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { FullPageLoader } from '../components/ui/Spinner';
+import { Input } from '../components/ui/Input';
+import { FullPageLoader, Spinner } from '../components/ui/Spinner';
 import { ErrorAlert } from '../components/ui/ErrorAlert';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { formatDate } from '../utils/format';
-import type { EstadoCursada } from '../types';
+import type { Alumno, EstadoCursada } from '../types';
 
-/**
- * Vista de legajo digital del alumno: datos personales + historial académico
- * + estadísticas. El alumno solo puede ver el suyo (el backend valida).
- */
 export function LegajoPage() {
+  const { usuario } = useAuth();
+  const isAlumno = usuario?.rol === 'ALUMNO';
+
+  if (!isAlumno) return <LegajoAdmin />;
+  return <LegajoPropio />;
+}
+
+// ── Vista alumno: su propio legajo ────────────────────────────────────────────
+
+function LegajoPropio() {
   const me = useApi(() => alumnosApi.me(), []);
   const legajo = useApi(
     () => (me.data ? alumnosApi.getLegajo(me.data.id) : Promise.reject('Sin alumno')),
@@ -29,15 +39,133 @@ export function LegajoPage() {
   return (
     <div className="max-w-screen-xl mx-auto">
       <Breadcrumb items={[{ label: 'SIGA', to: '/' }, { label: 'Mi legajo académico' }]} />
+      <h1 className="font-serif text-2xl font-semibold text-navy-900 mb-1">Legajo académico</h1>
+      <p className="text-sm text-slate-500 mb-6">Información personal y trayectoria académica</p>
+      <LegajoDetalle alumno={alumno} estadisticas={estadisticas} historial={historial} />
+    </div>
+  );
+}
 
-      <h1 className="font-serif text-2xl font-semibold text-navy-900 mb-1">
-        Legajo académico
-      </h1>
-      <p className="text-sm text-slate-500 mb-6">
-        Información personal y trayectoria académica
-      </p>
+// ── Vista admin: buscar alumno y ver su legajo ────────────────────────────────
 
-      {/* Datos personales */}
+function LegajoAdmin() {
+  const [q, setQ] = useState('');
+  const [seleccionado, setSeleccionado] = useState<Alumno | null>(null);
+
+  const alumnos = useApi(
+    () => alumnosApi.list({ q: q || undefined, pageSize: 20 }),
+    [q],
+  );
+
+  const legajo = useApi(
+    () => (seleccionado ? alumnosApi.getLegajo(seleccionado.id) : Promise.resolve(null)),
+    [seleccionado?.id],
+  );
+
+  if (seleccionado && legajo.data) {
+    const { alumno, estadisticas, historial } = legajo.data;
+    return (
+      <div className="max-w-screen-xl mx-auto">
+        <Breadcrumb
+          items={[
+            { label: 'SIGA', to: '/' },
+            { label: 'Legajos', to: '/legajo' },
+            { label: `${alumno.apellido}, ${alumno.nombre}` },
+          ]}
+        />
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => setSeleccionado(null)}
+            className="text-sm text-slate-500 hover:text-slate-900 underline"
+          >
+            ← Volver a la búsqueda
+          </button>
+        </div>
+        <h1 className="font-serif text-2xl font-semibold text-navy-900 mb-1">
+          {alumno.apellido}, {alumno.nombre}
+        </h1>
+        <p className="text-sm text-slate-500 mb-6">Legajo {alumno.legajo} · {alumno.carrera}</p>
+        <LegajoDetalle alumno={alumno} estadisticas={estadisticas} historial={historial} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-screen-xl mx-auto">
+      <Breadcrumb items={[{ label: 'SIGA', to: '/' }, { label: 'Legajos' }]} />
+      <h1 className="font-serif text-2xl font-semibold text-navy-900 mb-1">Legajos</h1>
+      <p className="text-sm text-slate-500 mb-6">Buscá un alumno para ver su legajo académico</p>
+
+      <Card>
+        <div className="mb-4">
+          <Input
+            placeholder="Buscar por nombre, apellido o legajo…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            leftIcon={<Search size={16} />}
+          />
+        </div>
+
+        {alumnos.loading ? (
+          <div className="py-8 flex justify-center"><Spinner /></div>
+        ) : alumnos.error ? (
+          <ErrorAlert message={alumnos.error} />
+        ) : !alumnos.data?.items.length ? (
+          <p className="text-sm text-slate-500 italic py-6 text-center">
+            {q ? 'No se encontraron alumnos.' : 'Escribí para buscar alumnos.'}
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {alumnos.data.items.map((a) => (
+              <li key={a.id}>
+                <button
+                  onClick={() => setSeleccionado(a)}
+                  className="w-full flex items-center justify-between py-3 hover:bg-slate-50 px-2 rounded-lg text-left"
+                >
+                  <div>
+                    <p className="font-medium text-slate-900">
+                      {a.apellido}, {a.nombre}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Legajo {a.legajo} · {a.carrera}
+                    </p>
+                  </div>
+                  <Badge tone={a.estado === 'ACTIVO' ? 'success' : 'neutral'}>{a.estado}</Badge>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {seleccionado && legajo.loading && (
+        <div className="mt-4 flex justify-center"><Spinner /></div>
+      )}
+    </div>
+  );
+}
+
+// ── Componente compartido de detalle ──────────────────────────────────────────
+
+function LegajoDetalle({
+  alumno,
+  estadisticas,
+  historial,
+}: {
+  alumno: {
+    legajo: string; dni: string; nombre: string; apellido: string;
+    carrera: string; anioIngreso: number; estado: string;
+  };
+  estadisticas: { totalMaterias: number; aprobadas: number; regulares: number };
+  historial: Array<{
+    id: string; cicloLectivo: number; tipo: string;
+    estadoCursada: EstadoCursada | null; nota: number | null;
+    fechaInscripcion: string;
+    materia?: { nombre?: string; codigo?: string } | null;
+  }>;
+}) {
+  return (
+    <>
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 mb-6">
         <Card>
           <h3 className="font-semibold text-slate-900 mb-4">Datos personales</h3>
@@ -49,7 +177,11 @@ export function LegajoPage() {
             <DatoLegajo label="Año de ingreso" valor={String(alumno.anioIngreso)} />
             <DatoLegajo
               label="Estado"
-              valor={<Badge tone={alumno.estado === 'ACTIVO' ? 'success' : 'neutral'}>{alumno.estado}</Badge>}
+              valor={
+                <Badge tone={alumno.estado === 'ACTIVO' ? 'success' : 'neutral'}>
+                  {alumno.estado}
+                </Badge>
+              }
             />
           </dl>
         </Card>
@@ -64,12 +196,11 @@ export function LegajoPage() {
         </Card>
       </div>
 
-      {/* Historial */}
       <Card>
         <h3 className="font-semibold text-slate-900 mb-4">Historial académico</h3>
         {historial.length === 0 ? (
           <p className="text-sm text-slate-500 italic py-6 text-center">
-            Tu historial está vacío. Inscribite a tus primeras materias.
+            El historial está vacío.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -107,7 +238,7 @@ export function LegajoPage() {
           </div>
         )}
       </Card>
-    </div>
+    </>
   );
 }
 
@@ -121,19 +252,11 @@ function DatoLegajo({ label, valor }: { label: string; valor: React.ReactNode })
 }
 
 function StatRow({
-  label,
-  valor,
-  tono = 'neutral',
+  label, valor, tono = 'neutral',
 }: {
-  label: string;
-  valor: number;
-  tono?: 'success' | 'info' | 'neutral';
+  label: string; valor: number; tono?: 'success' | 'info' | 'neutral';
 }) {
-  const colores = {
-    success: 'text-emerald-600',
-    info: 'text-sky-600',
-    neutral: 'text-slate-700',
-  } as const;
+  const colores = { success: 'text-emerald-600', info: 'text-sky-600', neutral: 'text-slate-700' } as const;
   return (
     <li className="flex items-center justify-between">
       <span className="text-sm text-slate-600">{label}</span>
@@ -145,11 +268,7 @@ function StatRow({
 function EstadoCursadaChip({ estado }: { estado: EstadoCursada | null }) {
   if (!estado) return <span className="text-slate-400">—</span>;
   const map: Record<EstadoCursada, 'success' | 'info' | 'danger' | 'warn' | 'neutral'> = {
-    APROBADA: 'success',
-    REGULAR: 'info',
-    EN_CURSO: 'warn',
-    REPROBADA: 'danger',
-    LIBRE: 'neutral',
+    APROBADA: 'success', REGULAR: 'info', EN_CURSO: 'warn', REPROBADA: 'danger', LIBRE: 'neutral',
   };
   return <Badge tone={map[estado]}>{estado}</Badge>;
 }

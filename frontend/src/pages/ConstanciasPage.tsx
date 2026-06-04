@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, Download, ShieldCheck } from 'lucide-react';
+import { Plus, Download, ShieldCheck, Send } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
+import { useAuth } from '../hooks/useAuth';
 import { alumnosApi } from '../api/alumnos.api';
 import { constanciasApi } from '../api/constancias.api';
 import { Card, CardHeader } from '../components/ui/Card';
@@ -23,12 +24,58 @@ const TIPOS: { value: TipoConstancia; label: string }[] = [
 ];
 
 export function ConstanciasPage() {
-  const alumno = useApi(() => alumnosApi.me(), []);
-  const constancias = useApi(() => constanciasApi.list({ pageSize: 50 }), []);
+  const { usuario } = useAuth();
+  const isAlumno = usuario?.rol === 'ALUMNO';
+  const isStaff = usuario?.rol === 'ADMIN' || usuario?.rol === 'ADMINISTRATIVO';
+
+  const alumno = useApi(
+    () => (isAlumno ? alumnosApi.me() : Promise.resolve(null)),
+    [isAlumno],
+  );
+  const constancias = useApi(() => constanciasApi.list({ pageSize: 100 }), []);
   const [modalAbierto, setModalAbierto] = useState(false);
 
-  if (alumno.loading || constancias.loading) return <FullPageLoader />;
+  if ((isAlumno && alumno.loading) || constancias.loading) return <FullPageLoader />;
   if (alumno.error) return <ErrorAlert message={alumno.error} />;
+
+  // ── Vista admin / administrativo ───────────────────────────────────────────
+  if (!isAlumno) {
+    return (
+      <div className="max-w-screen-xl mx-auto">
+        <Breadcrumb items={[{ label: 'SIGA', to: '/' }, { label: 'Constancias' }]} />
+        <div className="mb-6">
+          <h1 className="font-serif text-2xl font-semibold text-navy-900">Constancias</h1>
+          <p className="text-sm text-slate-500">
+            Gestión y emisión de constancias · {constancias.data?.total ?? 0} registros
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader title="Todas las constancias" />
+          {constancias.error ? (
+            <ErrorAlert message={constancias.error} />
+          ) : !constancias.data?.items.length ? (
+            <p className="text-sm text-slate-500 italic py-6 text-center">
+              No hay constancias registradas.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {constancias.data.items.map((c) => (
+                <ItemConstanciaAdmin
+                  key={c.id}
+                  constancia={c}
+                  puedeEmitir={isStaff}
+                  onEmitida={() => constancias.reload()}
+                />
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Vista alumno ───────────────────────────────────────────────────────────
   if (!alumno.data) return null;
 
   return (
@@ -56,7 +103,7 @@ export function ConstanciasPage() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {constancias.data.items.map((c) => (
-              <ItemConstancia key={c.id} constancia={c} />
+              <ItemConstanciaAlumno key={c.id} constancia={c} />
             ))}
           </ul>
         )}
@@ -76,7 +123,104 @@ export function ConstanciasPage() {
   );
 }
 
-function ItemConstancia({ constancia }: { constancia: Constancia }) {
+// ── Item constancia para admin (con botón emitir) ─────────────────────────────
+
+function ItemConstanciaAdmin({
+  constancia,
+  puedeEmitir,
+  onEmitida,
+}: {
+  constancia: Constancia;
+  puedeEmitir: boolean;
+  onEmitida: () => void;
+}) {
+  const [emitiendo, setEmitiendo] = useState(false);
+  const [bajando, setBajando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const label = TIPOS.find((t) => t.value === constancia.tipo)?.label ?? constancia.tipo;
+
+  async function handleEmitir() {
+    setError(null);
+    setEmitiendo(true);
+    try {
+      await constanciasApi.emitir(constancia.id);
+      onEmitida();
+    } catch (err) {
+      setError(extractErrorMessage(err, 'No se pudo emitir'));
+    } finally {
+      setEmitiendo(false);
+    }
+  }
+
+  async function descargar() {
+    setBajando(true);
+    try {
+      const blob = await constanciasApi.downloadPdf(constancia.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `constancia-${constancia.codigoVerificacion}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setBajando(false);
+    }
+  }
+
+  return (
+    <li className="py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <h4 className="font-semibold text-slate-900">{label}</h4>
+            <EstadoConstanciaChip estado={constancia.estado} />
+          </div>
+          {constancia.alumno && (
+            <p className="text-sm text-slate-700 font-medium">
+              {constancia.alumno.apellido}, {constancia.alumno.nombre}{' '}
+              <span className="text-slate-500 font-normal">· {constancia.alumno.legajo}</span>
+            </p>
+          )}
+          <p className="text-xs text-slate-500 mt-1">
+            Solicitada el {formatDate(constancia.fechaSolicitud)}
+            {constancia.fechaEmision && ` · Emitida el ${formatDate(constancia.fechaEmision)}`}
+          </p>
+          <p className="text-xs text-slate-500 mt-1 inline-flex items-center gap-1.5">
+            <ShieldCheck size={12} /> Código:{' '}
+            <code className="font-mono text-slate-700">{constancia.codigoVerificacion}</code>
+          </p>
+          {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+        </div>
+        <div className="flex gap-2 shrink-0">
+          {constancia.estado === 'EMITIDA' ? (
+            <Button
+              variant="secondary"
+              onClick={descargar}
+              disabled={bajando}
+              leftIcon={<Download size={14} />}
+            >
+              {bajando ? <Spinner size={14} /> : 'PDF'}
+            </Button>
+          ) : puedeEmitir ? (
+            <Button
+              onClick={handleEmitir}
+              disabled={emitiendo}
+              leftIcon={<Send size={14} />}
+            >
+              {emitiendo ? <Spinner size={14} className="text-white" /> : 'Emitir'}
+            </Button>
+          ) : (
+            <span className="text-xs text-slate-400 italic">Pendiente</span>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+// ── Item constancia para alumno ───────────────────────────────────────────────
+
+function ItemConstanciaAlumno({ constancia }: { constancia: Constancia }) {
   const [bajando, setBajando] = useState(false);
   const label = TIPOS.find((t) => t.value === constancia.tipo)?.label ?? constancia.tipo;
 
@@ -112,7 +256,12 @@ function ItemConstancia({ constancia }: { constancia: Constancia }) {
         </p>
       </div>
       {constancia.estado === 'EMITIDA' ? (
-        <Button variant="secondary" onClick={descargar} disabled={bajando} leftIcon={<Download size={14} />}>
+        <Button
+          variant="secondary"
+          onClick={descargar}
+          disabled={bajando}
+          leftIcon={<Download size={14} />}
+        >
           {bajando ? <Spinner size={14} /> : 'Descargar PDF'}
         </Button>
       ) : (
@@ -124,13 +273,12 @@ function ItemConstancia({ constancia }: { constancia: Constancia }) {
 
 function EstadoConstanciaChip({ estado }: { estado: EstadoConstancia }) {
   const map: Record<EstadoConstancia, 'success' | 'warn' | 'danger' | 'neutral'> = {
-    EMITIDA: 'success',
-    EN_PROCESO: 'warn',
-    SOLICITADA: 'neutral',
-    RECHAZADA: 'danger',
+    EMITIDA: 'success', EN_PROCESO: 'warn', SOLICITADA: 'neutral', RECHAZADA: 'danger',
   };
   return <Badge tone={map[estado]}>{estado.replace('_', ' ').toLowerCase()}</Badge>;
 }
+
+// ── Modal nueva constancia (alumno) ──────────────────────────────────────────
 
 interface ModalProps {
   alumnoId: string;
@@ -164,13 +312,7 @@ function ModalNuevaConstancia({ alumnoId, onClose, onCreada }: ModalProps) {
         <p className="text-sm text-slate-500 mb-4">
           Tu solicitud quedará pendiente de aprobación administrativa.
         </p>
-
-        {error && (
-          <div className="mb-3">
-            <ErrorAlert message={error} />
-          </div>
-        )}
-
+        {error && <div className="mb-3"><ErrorAlert message={error} /></div>}
         <div className="space-y-3">
           <div>
             <label className="form-label">Tipo de constancia</label>
@@ -180,13 +322,10 @@ function ModalNuevaConstancia({ alumnoId, onClose, onCreada }: ModalProps) {
               className="form-input"
             >
               {TIPOS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
+                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
           </div>
-
           <div>
             <label className="form-label">Motivo (opcional)</label>
             <textarea
@@ -198,11 +337,8 @@ function ModalNuevaConstancia({ alumnoId, onClose, onCreada }: ModalProps) {
             />
           </div>
         </div>
-
         <div className="flex justify-end gap-2 mt-6">
-          <Button variant="secondary" onClick={onClose} disabled={submitting}>
-            Cancelar
-          </Button>
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? <Spinner size={16} className="text-white" /> : 'Solicitar'}
           </Button>

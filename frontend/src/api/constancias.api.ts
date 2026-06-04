@@ -14,6 +14,9 @@ export const constanciasApi = {
       .get(`/constancias/${id}/pdf`, { responseType: 'blob' })
       .then((r) => r.data as Blob),
 
+  emitir: (id: string) =>
+    apiClient.post<Constancia>(`/constancias/${id}/emitir`).then((r) => r.data),
+
   verificar: (codigo: string) =>
     apiClient.get(`/constancias/verificar/${codigo}`).then((r) => r.data),
 };

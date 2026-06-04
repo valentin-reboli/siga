@@ -7,34 +7,61 @@ import {
   Calendar,
   FileBadge2,
   User,
+  Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import type { RolUsuario } from '../../types';
 
 interface NavItem {
   to: string;
   label: string;
   icon: ReactNode;
-  /** Si está definido, se muestra como un contador rojo al lado del item. */
   badge?: number;
 }
 
-const items: NavItem[] = [
-  { to: '/', label: 'Inicio', icon: <Home size={18} /> },
-  { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
-  { to: '/legajo', label: 'Mi legajo académico', icon: <FileText size={18} /> },
-  { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
-  { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
-  { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
-  { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
-];
+function getNavItems(rol?: RolUsuario): NavItem[] {
+  const base: NavItem[] = [
+    { to: '/', label: 'Inicio', icon: <Home size={18} /> },
+    { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
+    { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
+    { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
+  ];
+
+  if (rol === 'ALUMNO') {
+    return [
+      { to: '/', label: 'Inicio', icon: <Home size={18} /> },
+      { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
+      { to: '/legajo', label: 'Mi legajo académico', icon: <FileText size={18} /> },
+      { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
+      { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
+      { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
+      { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
+    ];
+  }
+
+  // Admin, Administrativo, Docente, Preceptor
+  return [
+    { to: '/', label: 'Inicio', icon: <Home size={18} /> },
+    { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
+    { to: '/legajo', label: 'Legajos de alumnos', icon: <Users size={18} /> },
+    { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
+    { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
+    { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
+    { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
+  ];
+}
 
 interface PeriodoInfo {
   titulo: string;
   detalle: string;
-  progreso: number; // 0-100
+  progreso: number;
 }
 
 export function Sidebar({ periodo }: { periodo?: PeriodoInfo }) {
+  const { usuario } = useAuth();
+  const items = getNavItems(usuario?.rol);
+
   return (
     <aside className="w-64 shrink-0 border-r border-slate-200 bg-white flex flex-col">
       <div className="px-6 py-5">

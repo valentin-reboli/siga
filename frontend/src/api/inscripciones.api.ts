@@ -21,6 +21,11 @@ export const inscripcionesApi = {
     fechaExamen?: string;
   }) => apiClient.post<Inscripcion>('/inscripciones', data).then((r) => r.data),
 
+  update: (
+    id: string,
+    data: { estado?: string; estadoCursada?: string; nota?: number; observaciones?: string },
+  ) => apiClient.patch<Inscripcion>(`/inscripciones/${id}`, data).then((r) => r.data),
+
   cancel: (id: string) =>
     apiClient.delete<Inscripcion>(`/inscripciones/${id}`).then((r) => r.data),
 };
