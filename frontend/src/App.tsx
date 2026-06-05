@@ -11,6 +11,7 @@ import { ConstanciasPage } from './pages/ConstanciasPage';
 import { MateriasPage } from './pages/MateriasPage';
 import { CalendarioPage } from './pages/CalendarioPage';
 import { PerfilPage } from './pages/PerfilPage';
+import { GestionUsuariosPage } from './pages/GestionUsuariosPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Rutas de la app.
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/calendario" element={<CalendarioPage />} />
             <Route path="/constancias" element={<ConstanciasPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
+            <Route path="/usuarios" element={<GestionUsuariosPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
 

@@ -1,7 +1,8 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, RolUsuario } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { HttpError } from '../../utils/httpError';
-import { ListUsuariosQuery, UpdateUsuarioInput } from './usuarios.schemas';
+import { hashPassword, generatePassword } from '../../utils/password';
+import { ListUsuariosQuery, UpdateUsuarioInput, CreateAlumnoInput, CreateStaffInput } from './usuarios.schemas';
 
 const usuarioSelect = {
   id: true,
@@ -42,27 +43,108 @@ export const usuariosService = {
   },
 
   async getById(id: string) {
-    const usuario = await prisma.usuario.findUnique({
-      where: { id },
-      select: usuarioSelect,
-    });
+    const usuario = await prisma.usuario.findUnique({ where: { id }, select: usuarioSelect });
     if (!usuario) throw HttpError.notFound('Usuario no encontrado');
     return usuario;
   },
 
   async update(id: string, data: UpdateUsuarioInput) {
-    return prisma.usuario.update({
-      where: { id },
-      data,
-      select: usuarioSelect,
-    });
+    return prisma.usuario.update({ where: { id }, data, select: usuarioSelect });
   },
 
   async deactivate(id: string) {
-    return prisma.usuario.update({
-      where: { id },
-      data: { activo: false },
+    return prisma.usuario.update({ where: { id }, data: { activo: false }, select: usuarioSelect });
+  },
+
+  /**
+   * Crea un usuario ALUMNO + su perfil en la tabla alumnos.
+   * Devuelve el usuario, el alumno y la contraseña generada (mostrar una sola vez al admin).
+   */
+  async createAlumno(data: CreateAlumnoInput) {
+    const existe = await prisma.usuario.findUnique({ where: { email: data.email } });
+    if (existe) throw HttpError.conflict('Ya existe un usuario con ese email');
+
+    const existeDni = await prisma.alumno.findUnique({ where: { dni: data.dni } });
+    if (existeDni) throw HttpError.conflict('Ya existe un alumno con ese DNI');
+
+    const existeLegajo = await prisma.alumno.findUnique({ where: { legajo: data.legajo } });
+    if (existeLegajo) throw HttpError.conflict('Ya existe un alumno con ese legajo');
+
+    const passwordPlain = generatePassword(data.nombre, data.apellido);
+    const passwordHash = await hashPassword(passwordPlain);
+
+    const alumno = await prisma.$transaction(async (tx) => {
+      const usuario = await tx.usuario.create({
+        data: {
+          email: data.email,
+          passwordHash,
+          nombre: data.nombre,
+          apellido: data.apellido,
+          rol: RolUsuario.ALUMNO,
+        },
+      });
+      return tx.alumno.create({
+        data: {
+          legajo: data.legajo,
+          dni: data.dni,
+          nombre: data.nombre,
+          apellido: data.apellido,
+          fechaNacimiento: data.fechaNacimiento,
+          telefono: data.telefono,
+          direccion: data.direccion,
+          carrera: data.carrera,
+          anioIngreso: data.anioIngreso,
+          usuarioId: usuario.id,
+        },
+        include: { usuario: { select: usuarioSelect } },
+      });
+    });
+
+    return { alumno, passwordTemporal: passwordPlain };
+  },
+
+  /**
+   * Crea un usuario de staff (DOCENTE, ADMINISTRATIVO, PRECEPTOR).
+   * Devuelve el usuario y la contraseña generada.
+   */
+  async createStaff(data: CreateStaffInput) {
+    const existe = await prisma.usuario.findUnique({ where: { email: data.email } });
+    if (existe) throw HttpError.conflict('Ya existe un usuario con ese email');
+
+    const passwordPlain = generatePassword(data.nombre, data.apellido);
+    const passwordHash = await hashPassword(passwordPlain);
+
+    const usuario = await prisma.usuario.create({
+      data: { email: data.email, passwordHash, nombre: data.nombre, apellido: data.apellido, rol: data.rol },
       select: usuarioSelect,
+    });
+
+    return { usuario, passwordTemporal: passwordPlain };
+  },
+
+  // Asignar/remover materia a un docente
+  async assignMateria(docenteId: string, materiaId: string, cicloLectivo = 0) {
+    const docente = await prisma.usuario.findUnique({ where: { id: docenteId } });
+    if (!docente || docente.rol !== RolUsuario.DOCENTE) {
+      throw HttpError.badRequest('El usuario no es docente');
+    }
+    return prisma.docenteMateria.upsert({
+      where: { usuarioId_materiaId_cicloLectivo: { usuarioId: docenteId, materiaId, cicloLectivo } },
+      update: {},
+      create: { usuarioId: docenteId, materiaId, cicloLectivo },
+    });
+  },
+
+  async removeMateria(docenteId: string, materiaId: string, cicloLectivo = 0) {
+    return prisma.docenteMateria.delete({
+      where: { usuarioId_materiaId_cicloLectivo: { usuarioId: docenteId, materiaId, cicloLectivo } },
+    });
+  },
+
+  async getMaterias(docenteId: string) {
+    return prisma.docenteMateria.findMany({
+      where: { usuarioId: docenteId },
+      include: { materia: true },
     });
   },
 };

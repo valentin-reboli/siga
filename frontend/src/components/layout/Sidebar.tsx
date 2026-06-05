@@ -8,6 +8,7 @@ import {
   FileBadge2,
   User,
   Users,
+  UserCog,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../../hooks/useAuth';
@@ -41,7 +42,7 @@ function getNavItems(rol?: RolUsuario): NavItem[] {
   }
 
   // Admin, Administrativo, Docente, Preceptor
-  return [
+  const staffItems: NavItem[] = [
     { to: '/', label: 'Inicio', icon: <Home size={18} /> },
     { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
     { to: '/legajo', label: 'Legajos de alumnos', icon: <Users size={18} /> },
@@ -50,6 +51,12 @@ function getNavItems(rol?: RolUsuario): NavItem[] {
     { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
     { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
   ];
+
+  if (rol === 'ADMIN' || rol === 'ADMINISTRATIVO') {
+    staffItems.splice(5, 0, { to: '/usuarios', label: 'Gestión de usuarios', icon: <UserCog size={18} /> });
+  }
+
+  return staffItems;
 }
 
 interface PeriodoInfo {

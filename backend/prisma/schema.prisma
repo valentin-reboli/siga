@@ -1,6 +1,6 @@
 // ===================================================
 // SIGA - Sistema Integral de Gestión Académica
-// Schema Prisma - PostgreSQL (Neon.tech)
+// Schema Prisma - PostgreSQL
 // ===================================================
 
 generator client {
@@ -71,28 +71,26 @@ enum EstadoConstancia {
 // MODELOS
 // ===================================================
 
-// --- Usuarios y autenticación ---
 model Usuario {
-  id           String     @id @default(uuid())
-  email        String     @unique
-  passwordHash String
-  nombre       String
-  apellido     String
-  rol          RolUsuario @default(ALUMNO)
-  activo       Boolean    @default(true)
-  ultimoLogin  DateTime?
-  creadoEn     DateTime   @default(now())
-  actualizadoEn DateTime  @updatedAt
+  id            String           @id @default(uuid())
+  email         String           @unique
+  passwordHash  String
+  nombre        String
+  apellido      String
+  rol           RolUsuario       @default(ALUMNO)
+  activo        Boolean          @default(true)
+  ultimoLogin   DateTime?
+  creadoEn      DateTime         @default(now())
+  actualizadoEn DateTime         @updatedAt
 
-  // Relación 1:1 con Alumno (si el usuario es alumno)
-  alumno       Alumno?
+  alumno          Alumno?
+  docenteMaterias DocenteMateria[]
 
   @@index([email])
   @@index([rol])
   @@map("usuarios")
 }
 
-// --- Alumnos y legajo digital ---
 model Alumno {
   id              String        @id @default(uuid())
   legajo          String        @unique
@@ -108,12 +106,11 @@ model Alumno {
   creadoEn        DateTime      @default(now())
   actualizadoEn   DateTime      @updatedAt
 
-  // Vínculo con el usuario que permite login
-  usuarioId       String        @unique
-  usuario         Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId     String        @unique
+  usuario       Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
-  inscripciones   Inscripcion[]
-  constancias    Constancia[]
+  inscripciones Inscripcion[]
+  constancias   Constancia[]
 
   @@index([legajo])
   @@index([dni])
@@ -121,70 +118,75 @@ model Alumno {
   @@map("alumnos")
 }
 
-// --- Materias y correlatividades ---
 model Materia {
   id            String        @id @default(uuid())
   codigo        String        @unique
   nombre        String
   descripcion   String?
-  anio          Int           // Año del plan de estudios (1, 2, 3...)
-  cuatrimestre  Int           // 1, 2 (o 0 para anuales)
-  cargaHoraria  Int           // Horas totales
+  anio          Int
+  cuatrimestre  Int
+  cargaHoraria  Int
   cupoMaximo    Int           @default(40)
   carrera       String
   activa        Boolean       @default(true)
   creadoEn      DateTime      @default(now())
   actualizadoEn DateTime      @updatedAt
 
-  // Correlatividades (self-relation many-to-many)
-  // Una materia puede requerir otras (correlativasRequeridas)
-  // y ser correlativa de otras (correlativasDe)
   correlativasRequeridas Correlatividad[] @relation("MateriaCorrelativaDe")
   correlativasDe         Correlatividad[] @relation("MateriaRequiere")
 
   inscripciones Inscripcion[]
+  docentes      DocenteMateria[]
 
   @@index([codigo])
   @@index([carrera, anio])
   @@map("materias")
 }
 
-// Tabla puente para correlatividades (M:N self-relation explícita)
 model Correlatividad {
-  id           String  @id @default(uuid())
-  // Materia que "necesita" la correlativa
-  materiaId    String
-  materia      Materia @relation("MateriaCorrelativaDe", fields: [materiaId], references: [id], onDelete: Cascade)
-  // Materia que debe estar aprobada/regular
-  requiereId   String
-  requiere     Materia @relation("MateriaRequiere", fields: [requiereId], references: [id], onDelete: Cascade)
-  // Tipo: 'REGULAR' (cursada aprobada) o 'APROBADA' (final aprobado)
-  tipo         String  @default("APROBADA")
+  id         String  @id @default(uuid())
+  materiaId  String
+  materia    Materia @relation("MateriaCorrelativaDe", fields: [materiaId], references: [id], onDelete: Cascade)
+  requiereId String
+  requiere   Materia @relation("MateriaRequiere", fields: [requiereId], references: [id], onDelete: Cascade)
+  tipo       String  @default("APROBADA")
 
   @@unique([materiaId, requiereId])
   @@map("correlatividades")
 }
 
-// --- Inscripciones (cursadas y mesas de examen) ---
-model Inscripcion {
-  id           String            @id @default(uuid())
-  alumnoId     String
-  alumno       Alumno            @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+// Asignación de docente a una materia (puede ser por ciclo lectivo o permanente)
+model DocenteMateria {
+  id           String  @id @default(uuid())
+  usuarioId    String
+  usuario      Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   materiaId    String
-  materia      Materia           @relation(fields: [materiaId], references: [id], onDelete: Restrict)
+  materia      Materia @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+  cicloLectivo Int     @default(0) // 0 = permanente / todos los ciclos
 
-  tipo         TipoInscripcion
-  estado       EstadoInscripcion @default(PENDIENTE)
-  estadoCursada EstadoCursada?
-  nota         Float?
-  fechaInscripcion DateTime      @default(now())
-  fechaExamen      DateTime?     // Solo para MESA_EXAMEN
-  cicloLectivo     Int           // p.ej. 2026
+  @@unique([usuarioId, materiaId, cicloLectivo])
+  @@index([usuarioId])
+  @@index([materiaId])
+  @@map("docente_materias")
+}
+
+model Inscripcion {
+  id               String            @id @default(uuid())
+  alumnoId         String
+  alumno           Alumno            @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+  materiaId        String
+  materia          Materia           @relation(fields: [materiaId], references: [id], onDelete: Restrict)
+
+  tipo             TipoInscripcion
+  estado           EstadoInscripcion @default(PENDIENTE)
+  estadoCursada    EstadoCursada?
+  nota             Float?
+  fechaInscripcion DateTime          @default(now())
+  fechaExamen      DateTime?
+  cicloLectivo     Int
   observaciones    String?
+  actualizadoEn    DateTime          @updatedAt
 
-  actualizadoEn DateTime         @updatedAt
-
-  // Un alumno no puede inscribirse dos veces a la misma materia/tipo/ciclo
   @@unique([alumnoId, materiaId, tipo, cicloLectivo])
   @@index([alumnoId])
   @@index([materiaId])
@@ -193,22 +195,20 @@ model Inscripcion {
   @@map("inscripciones")
 }
 
-// --- Constancias ---
 model Constancia {
-  id              String           @id @default(uuid())
-  alumnoId        String
-  alumno          Alumno           @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(uuid())
+  alumnoId           String
+  alumno             Alumno           @relation(fields: [alumnoId], references: [id], onDelete: Cascade)
 
-  tipo            TipoConstancia
-  estado          EstadoConstancia @default(SOLICITADA)
-  motivo          String?          // Motivo declarado por el alumno
-  codigoVerificacion String        @unique  // Para validar autenticidad
-  archivoUrl      String?          // URL o path del PDF generado
-  fechaSolicitud  DateTime         @default(now())
-  fechaEmision    DateTime?
-  observaciones   String?
-
-  actualizadoEn   DateTime         @updatedAt
+  tipo               TipoConstancia
+  estado             EstadoConstancia @default(SOLICITADA)
+  motivo             String?
+  codigoVerificacion String           @unique
+  archivoUrl         String?
+  fechaSolicitud     DateTime         @default(now())
+  fechaEmision       DateTime?
+  observaciones      String?
+  actualizadoEn      DateTime         @updatedAt
 
   @@index([alumnoId])
   @@index([codigoVerificacion])

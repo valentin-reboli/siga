@@ -16,5 +16,29 @@ export const listUsuariosQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+// Crear alumno — el admin/administrativo crea el usuario + perfil alumno
+export const createAlumnoSchema = z.object({
+  nombre: z.string().min(2),
+  apellido: z.string().min(2),
+  email: z.string().email(),
+  dni: z.string().min(7).max(10),
+  legajo: z.string().min(3),
+  carrera: z.string().min(3),
+  anioIngreso: z.coerce.number().int().min(2000).max(2100),
+  fechaNacimiento: z.coerce.date(),
+  telefono: z.string().optional(),
+  direccion: z.string().optional(),
+});
+
+// Crear staff (docente, administrativo, preceptor)
+export const createStaffSchema = z.object({
+  nombre: z.string().min(2),
+  apellido: z.string().min(2),
+  email: z.string().email(),
+  rol: z.enum([RolUsuario.DOCENTE, RolUsuario.ADMINISTRATIVO, RolUsuario.PRECEPTOR]),
+});
+
 export type UpdateUsuarioInput = z.infer<typeof updateUsuarioSchema>;
 export type ListUsuariosQuery = z.infer<typeof listUsuariosQuerySchema>;
+export type CreateAlumnoInput = z.infer<typeof createAlumnoSchema>;
+export type CreateStaffInput = z.infer<typeof createStaffSchema>;
