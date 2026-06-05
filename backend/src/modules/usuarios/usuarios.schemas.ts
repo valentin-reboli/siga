@@ -22,7 +22,7 @@ export const createAlumnoSchema = z.object({
   apellido: z.string().min(2),
   email: z.string().email(),
   dni: z.string().min(7).max(10),
-  legajo: z.string().min(3),
+  // El legajo se genera automáticamente en el backend (convención AAAA-NNNN).
   carrera: z.string().min(3),
   anioIngreso: z.coerce.number().int().min(2000).max(2100),
   fechaNacimiento: z.coerce.date(),

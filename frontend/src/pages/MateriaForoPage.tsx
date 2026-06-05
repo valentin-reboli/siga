@@ -2,8 +2,10 @@ import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  CalendarClock,
   Download,
   FileText,
+  Lock,
   Megaphone,
   MessageSquare,
   MessagesSquare,
@@ -38,8 +40,9 @@ import type {
 
 const TIPOS: Record<
   TipoPublicacion,
-  { label: string; tone: 'navy' | 'info' | 'success'; icon: typeof Megaphone }
+  { label: string; tone: 'navy' | 'info' | 'success' | 'danger'; icon: typeof Megaphone }
 > = {
+  EXAMEN: { label: 'Examen', tone: 'danger', icon: CalendarClock },
   ANUNCIO: { label: 'Anuncio', tone: 'navy', icon: Megaphone },
   MATERIAL: { label: 'Material', tone: 'success', icon: FileText },
   HILO: { label: 'Discusión', tone: 'info', icon: MessagesSquare },
@@ -54,6 +57,17 @@ function formatDateTime(iso: string): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+  });
+}
+
+function formatFechaExamen(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('es-AR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
   });
 }
 
@@ -85,9 +99,37 @@ export function MateriaForoPage() {
 
   if (feed.loading) return <FullPageLoader label="Cargando foro…" />;
   if (feed.error) {
+    const sinAcceso = /inscript|permis|acceso/i.test(feed.error);
     return (
-      <div className="max-w-screen-lg mx-auto">
-        <ErrorAlert message={feed.error} />
+      <div className="mx-auto max-w-screen-lg">
+        <Breadcrumb
+          items={[
+            { label: 'SIGA', to: '/' },
+            { label: 'Catálogo de materias', to: '/materias' },
+            { label: 'Foro' },
+          ]}
+        />
+        <Card>
+          <div className="py-12 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+              <Lock size={22} />
+            </div>
+            <p className="font-medium text-slate-700">
+              {sinAcceso ? 'Foro privado de la materia' : 'No se pudo abrir el foro'}
+            </p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{feed.error}</p>
+            <div className="mt-5 flex justify-center gap-2">
+              {sinAcceso && (
+                <Link to="/inscripciones" className="btn-primary text-sm">
+                  Inscribirme
+                </Link>
+              )}
+              <Link to="/materias" className="btn-secondary text-sm">
+                Volver al catálogo
+              </Link>
+            </div>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -95,6 +137,9 @@ export function MateriaForoPage() {
   const data = feed.data!;
   const color = colorMateria(data.materia.codigo);
   const puedePublicar = data.puedePublicar;
+  const examenes = data.items
+    .filter((p) => p.tipo === 'EXAMEN' && p.fechaExamen)
+    .sort((a, b) => new Date(a.fechaExamen!).getTime() - new Date(b.fechaExamen!).getTime());
 
   return (
     <div className="max-w-screen-lg mx-auto">
@@ -136,6 +181,42 @@ export function MateriaForoPage() {
           )}
         </div>
       </div>
+
+      {/* Fechas de examen — fijas y destacadas */}
+      {examenes.length > 0 && (
+        <div className="mb-6 overflow-hidden rounded-2xl border border-rose-200 bg-rose-50">
+          <div className="flex items-center gap-2 border-b border-rose-200 px-5 py-3">
+            <CalendarClock size={18} className="text-rose-600" />
+            <h2 className="text-sm font-semibold text-rose-800">Fechas de examen</h2>
+          </div>
+          <ul className="divide-y divide-rose-100">
+            {examenes.map((e) => (
+              <li key={e.id}>
+                <button
+                  type="button"
+                  onClick={() => setDetalleId(e.id)}
+                  className="flex w-full items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-rose-100/60"
+                >
+                  <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-white text-rose-700 shadow-sm">
+                    <span className="text-[10px] font-semibold uppercase">
+                      {new Date(e.fechaExamen!).toLocaleDateString('es-AR', { month: 'short' })}
+                    </span>
+                    <span className="font-serif text-lg font-bold leading-none">
+                      {new Date(e.fechaExamen!).getDate()}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-slate-900">{e.titulo}</p>
+                    <p className="text-xs capitalize text-rose-700">
+                      {formatFechaExamen(e.fechaExamen!)}
+                    </p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Filtros por tipo */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -243,6 +324,11 @@ function PublicacionItem({ pub, onOpen }: { pub: Publicacion; onOpen: () => void
               <Badge tone={meta.tone}>{meta.label}</Badge>
               <h4 className="font-semibold text-slate-900 truncate">{pub.titulo}</h4>
             </div>
+            {pub.tipo === 'EXAMEN' && pub.fechaExamen && (
+              <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold capitalize text-rose-700">
+                <CalendarClock size={13} /> {formatFechaExamen(pub.fechaExamen)}
+              </p>
+            )}
             <p className="mt-1.5 line-clamp-2 text-sm text-slate-600 whitespace-pre-wrap">
               {pub.contenido}
             </p>
@@ -283,6 +369,7 @@ function NuevaPublicacionModal({
   const [titulo, setTitulo] = useState('');
   const [contenido, setContenido] = useState('');
   const [fijado, setFijado] = useState(false);
+  const [fechaExamen, setFechaExamen] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -292,10 +379,21 @@ function NuevaPublicacionModal({
       setError('Completá el título y el contenido.');
       return;
     }
+    if (tipo === 'EXAMEN' && !fechaExamen) {
+      setError('Indicá la fecha del examen.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      const payload: NuevaPublicacion = { tipo, titulo, contenido, fijado, archivos };
+      const payload: NuevaPublicacion = {
+        tipo,
+        titulo,
+        contenido,
+        fijado,
+        archivos,
+        fechaExamen: tipo === 'EXAMEN' ? new Date(fechaExamen).toISOString() : undefined,
+      };
       await foroApi.crearPublicacion(materiaId, payload);
       onCreated();
     } catch (err) {
@@ -347,9 +445,24 @@ function NuevaPublicacionModal({
           label="Título"
           value={titulo}
           onChange={(e) => setTitulo(e.target.value)}
-          placeholder="Ej: Guía de TP N°1"
+          placeholder={tipo === 'EXAMEN' ? 'Ej: Primer parcial' : 'Ej: Guía de TP N°1'}
           maxLength={200}
         />
+
+        {tipo === 'EXAMEN' && (
+          <div>
+            <label className="form-label">Fecha del examen</label>
+            <input
+              type="date"
+              value={fechaExamen}
+              onChange={(e) => setFechaExamen(e.target.value)}
+              className="form-input"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Queda fija y destacada arriba del foro como fecha de examen.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="form-label">Contenido</label>
@@ -384,15 +497,17 @@ function NuevaPublicacionModal({
           </p>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={fijado}
-            onChange={(e) => setFijado(e.target.checked)}
-            className="rounded border-slate-300"
-          />
-          Fijar arriba del foro
-        </label>
+        {tipo !== 'EXAMEN' && (
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={fijado}
+              onChange={(e) => setFijado(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Fijar arriba del foro
+          </label>
+        )}
       </div>
     </Modal>
   );
@@ -476,6 +591,12 @@ function DetalleContenido({
         <Badge tone={meta.tone}>{meta.label}</Badge>
         <span className="text-xs text-slate-400">{formatDateTime(pub.creadoEn)}</span>
       </div>
+
+      {pub.tipo === 'EXAMEN' && pub.fechaExamen && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold capitalize text-rose-800">
+          <CalendarClock size={16} /> Examen: {formatFechaExamen(pub.fechaExamen)}
+        </div>
+      )}
 
       <div className="mb-4 flex items-center gap-2 text-sm text-slate-600">
         <Avatar autor={pub.autor} />

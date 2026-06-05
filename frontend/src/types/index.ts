@@ -149,7 +149,7 @@ export interface LoginResponse {
 // Foro / aula virtual por materia
 // =====================================================
 
-export type TipoPublicacion = 'ANUNCIO' | 'MATERIAL' | 'HILO';
+export type TipoPublicacion = 'ANUNCIO' | 'MATERIAL' | 'HILO' | 'EXAMEN';
 
 export interface AutorMini {
   id: string;
@@ -180,6 +180,7 @@ export interface Publicacion {
   titulo: string;
   contenido: string;
   fijado: boolean;
+  fechaExamen?: string | null;
   creadoEn: string;
   actualizadoEn: string;
   autor: AutorMini;
@@ -207,4 +208,31 @@ export interface ForoFeed {
   page: number;
   pageSize: number;
   items: Publicacion[];
+}
+
+export interface MateriaMini {
+  id: string;
+  codigo: string;
+  nombre: string;
+}
+
+export interface AgendaExamen {
+  id: string;
+  titulo: string;
+  fechaExamen: string;
+  materia: MateriaMini;
+}
+
+export interface AgendaNovedad {
+  id: string;
+  tipo: TipoPublicacion;
+  titulo: string;
+  creadoEn: string;
+  materia: MateriaMini;
+  autor: AutorMini;
+}
+
+export interface ForoAgenda {
+  examenes: AgendaExamen[];
+  novedades: AgendaNovedad[];
 }

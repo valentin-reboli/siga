@@ -2,6 +2,7 @@ import { Prisma, RolUsuario } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { HttpError } from '../../utils/httpError';
 import { hashPassword, generatePassword } from '../../utils/password';
+import { generarLegajo } from '../../utils/legajo';
 import { ListUsuariosQuery, UpdateUsuarioInput, CreateAlumnoInput, CreateStaffInput } from './usuarios.schemas';
 
 const usuarioSelect = {
@@ -67,9 +68,6 @@ export const usuariosService = {
     const existeDni = await prisma.alumno.findUnique({ where: { dni: data.dni } });
     if (existeDni) throw HttpError.conflict('Ya existe un alumno con ese DNI');
 
-    const existeLegajo = await prisma.alumno.findUnique({ where: { legajo: data.legajo } });
-    if (existeLegajo) throw HttpError.conflict('Ya existe un alumno con ese legajo');
-
     const passwordPlain = generatePassword(data.nombre, data.apellido);
     const passwordHash = await hashPassword(passwordPlain);
 
@@ -83,9 +81,10 @@ export const usuariosService = {
           rol: RolUsuario.ALUMNO,
         },
       });
+      const legajo = await generarLegajo(tx, data.anioIngreso);
       return tx.alumno.create({
         data: {
-          legajo: data.legajo,
+          legajo,
           dni: data.dni,
           nombre: data.nombre,
           apellido: data.apellido,

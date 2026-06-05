@@ -9,6 +9,9 @@ export const createMateriaSchema = z.object({
   cargaHoraria: z.coerce.number().int().min(1),
   cupoMaximo: z.coerce.number().int().min(1).default(40),
   carrera: z.string().min(2),
+  // Clave que el docente comparte para inscribirse. Si se omite, el backend usa
+  // la derivada del nombre (slug + "123"). Nunca se devuelve en las consultas.
+  claveInscripcion: z.string().min(4).optional(),
 });
 
 export const updateMateriaSchema = createMateriaSchema.partial().extend({

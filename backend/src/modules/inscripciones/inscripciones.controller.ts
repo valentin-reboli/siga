@@ -10,7 +10,8 @@ export const inscripcionesController = {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.user) throw HttpError.unauthorized();
-      if (req.user.rol === RolUsuario.ALUMNO) {
+      const esAlumno = req.user.rol === RolUsuario.ALUMNO;
+      if (esAlumno) {
         const propio = await alumnosService.getByUsuarioId(req.user.sub);
         if (propio.id !== req.body.alumnoId) {
           throw HttpError.forbidden('Solo podés inscribirte a vos mismo');
@@ -19,7 +20,8 @@ export const inscripcionesController = {
         // Un docente no inscribe alumnos.
         throw HttpError.forbidden('No tenés permisos para inscribir alumnos');
       }
-      res.status(201).json(await inscripcionesService.create(req.body));
+      // El alumno debe ingresar la clave de la materia; el staff queda exento.
+      res.status(201).json(await inscripcionesService.create(req.body, { validarClave: esAlumno }));
     } catch (err) {
       next(err);
     }

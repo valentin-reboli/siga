@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import type {
   Adjunto,
   Comentario,
+  ForoAgenda,
   ForoFeed,
   Publicacion,
   PublicacionDetalle,
@@ -14,9 +15,14 @@ export interface NuevaPublicacion {
   contenido: string;
   fijado?: boolean;
   archivos?: File[];
+  /** Sólo para tipo EXAMEN: fecha del examen (ISO). */
+  fechaExamen?: string;
 }
 
 export const foroApi = {
+  // Agenda del usuario (próximos exámenes + novedades) para el dashboard.
+  agenda: () => apiClient.get<ForoAgenda>('/foro/agenda').then((r) => r.data),
+
   // Feed de una materia (incluye flag puedePublicar).
   feed: (
     materiaId: string,
@@ -37,6 +43,7 @@ export const foroApi = {
     fd.append('titulo', data.titulo);
     fd.append('contenido', data.contenido);
     if (data.fijado) fd.append('fijado', 'true');
+    if (data.fechaExamen) fd.append('fechaExamen', data.fechaExamen);
     (data.archivos ?? []).forEach((f) => fd.append('archivos', f));
     return apiClient
       .post<Publicacion>(`/foro/materias/${materiaId}/publicaciones`, fd, {

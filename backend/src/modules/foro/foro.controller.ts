@@ -4,11 +4,21 @@ import { resolveStoredPath } from './foro.storage';
 import { HttpError } from '../../utils/httpError';
 
 export const foroController = {
+  // GET /foro/agenda — próximos exámenes y novedades de las materias del usuario
+  async agenda(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.json(await foroService.agenda(req.user!));
+    } catch (err) {
+      next(err);
+    }
+  },
+
   // GET /materias/:materiaId/foro/publicaciones
   async list(req: Request, res: Response, next: NextFunction) {
     try {
       const { materiaId } = req.params;
       const materia = await foroService.getMateriaOr404(materiaId);
+      await foroService.assertPuedeVerForo(req.user!, materiaId);
       const [data, puedePublicar] = await Promise.all([
         foroService.listPublicaciones(materiaId, req.query as any),
         foroService.puedePublicar(req.user!, materiaId),
@@ -23,6 +33,7 @@ export const foroController = {
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const pub = await foroService.getPublicacion(req.params.id);
+      await foroService.assertPuedeVerForo(req.user!, pub.materiaId);
       const puedePublicar = await foroService.puedePublicar(req.user!, pub.materiaId);
       res.json({ ...pub, puedePublicar });
     } catch (err) {
@@ -88,6 +99,7 @@ export const foroController = {
   async downloadAdjunto(req: Request, res: Response, next: NextFunction) {
     try {
       const adj = await foroService.getAdjuntoForDownload(req.params.id);
+      await foroService.assertPuedeVerForo(req.user!, adj.publicacion.materiaId);
       const abs = resolveStoredPath(adj.nombreAlmacenado);
       res.download(abs, adj.nombreOriginal, (err) => {
         if (err && !res.headersSent) {

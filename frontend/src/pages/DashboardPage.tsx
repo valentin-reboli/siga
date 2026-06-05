@@ -15,6 +15,7 @@ import { CampusHero } from './dashboard/CampusHero';
 import { AccesosRapidos } from './dashboard/AccesosRapidos';
 import { MateriaCard } from './dashboard/MateriaCard';
 import { PanelAcciones, type AccionRequerida } from './dashboard/PanelAcciones';
+import { AgendaForo } from './dashboard/AgendaForo';
 import { modulesForRole } from '../config/modules';
 import { colorMateria } from '../utils/format';
 import type { RolUsuario } from '../types';
@@ -177,6 +178,10 @@ export function DashboardPage() {
             </div>
           )}
         </section>
+
+        <div className="mt-6">
+          <AgendaForo />
+        </div>
       </div>
     );
   }
@@ -304,6 +309,7 @@ export function DashboardPage() {
 
         <aside className="space-y-6">
           <PanelAcciones acciones={acciones} />
+          <AgendaForo />
         </aside>
       </div>
     </div>

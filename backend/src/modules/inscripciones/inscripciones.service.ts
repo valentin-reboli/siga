@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { HttpError } from '../../utils/httpError';
+import { claveMateriaCoincide } from '../../utils/claveMateria';
 import {
   CreateInscripcionInput,
   ListInscripcionesQuery,
@@ -95,7 +96,7 @@ async function validarCupo(materiaId: string, cicloLectivo: number) {
 }
 
 export const inscripcionesService = {
-  async create(data: CreateInscripcionInput) {
+  async create(data: CreateInscripcionInput, opts: { validarClave?: boolean } = {}) {
     // 1. Alumno debe estar activo
     const alumno = await prisma.alumno.findUnique({
       where: { id: data.alumnoId },
@@ -104,6 +105,21 @@ export const inscripcionesService = {
     if (!alumno) throw HttpError.notFound('Alumno no encontrado');
     if (alumno.estado !== EstadoAlumno.ACTIVO) {
       throw HttpError.badRequest(`El alumno no se encuentra en estado ACTIVO (actual: ${alumno.estado})`);
+    }
+
+    // 1.b Validar la clave de la materia (sólo cuando se inscribe el propio alumno
+    //     a una CURSADA). El staff puede inscribir sin clave.
+    if (opts.validarClave && data.tipo === TipoInscripcion.CURSADA) {
+      const materia = await prisma.materia.findUnique({
+        where: { id: data.materiaId },
+        select: { nombre: true, claveInscripcion: true },
+      });
+      if (!materia) throw HttpError.notFound('Materia no encontrada');
+      if (!claveMateriaCoincide(data.clave, materia.nombre, materia.claveInscripcion)) {
+        throw HttpError.forbidden(
+          'La clave de la materia es incorrecta. Pedísela al docente de la cátedra.',
+        );
+      }
     }
 
     // 2. Validar correlatividades

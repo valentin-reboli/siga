@@ -136,6 +136,10 @@ model Materia {
   cupoMaximo    Int           @default(40)
   carrera       String
   activa        Boolean       @default(true)
+  // Clave que el docente comparte al inicio del cursado para autorizar la
+  // inscripción y proteger la privacidad de la materia. Si es null, el backend
+  // usa una clave derivada del nombre (slug + "123"). NUNCA se expone en la API.
+  claveInscripcion String?
   creadoEn      DateTime      @default(now())
   actualizadoEn DateTime      @updatedAt
 
@@ -235,6 +239,7 @@ enum TipoPublicacion {
   ANUNCIO   // novedad / aviso de la cátedra
   MATERIAL  // apunte, guía, bibliografía (suele llevar adjuntos)
   HILO      // tema de discusión
+  EXAMEN    // fecha de examen/parcial — se muestra fija y destacada
 }
 
 model Publicacion {
@@ -248,6 +253,7 @@ model Publicacion {
   titulo        String
   contenido     String
   fijado        Boolean         @default(false) // anclado arriba del feed
+  fechaExamen   DateTime?       // sólo para tipo EXAMEN: fecha del examen/parcial
   creadoEn      DateTime        @default(now())
   actualizadoEn DateTime        @updatedAt
 
@@ -257,6 +263,7 @@ model Publicacion {
   @@index([materiaId])
   @@index([autorId])
   @@index([materiaId, fijado, creadoEn])
+  @@index([tipo, fechaExamen])
   @@map("publicaciones")
 }
 

@@ -394,6 +394,7 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
 
   const [materiaId, setMateriaId] = useState('');
   const [tipo, setTipo] = useState<'CURSADA' | 'MESA_EXAMEN'>('CURSADA');
+  const [clave, setClave] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -402,9 +403,19 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
   async function handleSubmit() {
     setError(null);
     if (!materiaId) { setError('Seleccioná una materia'); return; }
+    if (tipo === 'CURSADA' && !clave.trim()) {
+      setError('Ingresá la clave de la materia que te dio el docente.');
+      return;
+    }
     setSubmitting(true);
     try {
-      await inscripcionesApi.create({ alumnoId, materiaId, tipo, cicloLectivo });
+      await inscripcionesApi.create({
+        alumnoId,
+        materiaId,
+        tipo,
+        cicloLectivo,
+        clave: tipo === 'CURSADA' ? clave.trim() : undefined,
+      });
       onCreada();
     } catch (err) {
       setError(extractErrorMessage(err, 'No se pudo crear la inscripción'));
@@ -452,6 +463,22 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
               </select>
             )}
           </div>
+          {tipo === 'CURSADA' && (
+            <div>
+              <label className="form-label">Clave de la materia</label>
+              <input
+                type="password"
+                value={clave}
+                onChange={(e) => setClave(e.target.value)}
+                placeholder="La que te dio el docente"
+                className="form-input"
+                autoComplete="off"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                El docente entrega esta clave al inicio del cursado para proteger la materia.
+              </p>
+            </div>
+          )}
         </div>
         <div className="flex justify-end gap-2 mt-6">
           <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancelar</Button>

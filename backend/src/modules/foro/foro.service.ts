@@ -66,6 +66,44 @@ export const foroService = {
     }
   },
 
+  /**
+   * ¿Este usuario puede VER el foro de esta materia?
+   * - Staff y docente asignado: sí (mismos que pueden publicar).
+   * - ALUMNO: sólo si está inscripto a la CURSADA de esa materia
+   *   (estado PENDIENTE o CONFIRMADA). No alcanza con ser de la carrera.
+   */
+  async puedeVerForo(user: JwtPayload, materiaId: string): Promise<boolean> {
+    if (await this.puedePublicar(user, materiaId)) return true;
+    if (user.rol !== 'ALUMNO') return false;
+
+    const alumno = await prisma.alumno.findUnique({
+      where: { usuarioId: user.sub },
+      select: { id: true },
+    });
+    if (!alumno) return false;
+
+    const inscripcion = await prisma.inscripcion.findFirst({
+      where: {
+        alumnoId: alumno.id,
+        materiaId,
+        tipo: 'CURSADA',
+        estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
+      },
+      select: { id: true },
+    });
+    return Boolean(inscripcion);
+  },
+
+  /** Igual que puedeVerForo pero lanza 403 si no tiene acceso. */
+  async assertPuedeVerForo(user: JwtPayload, materiaId: string): Promise<void> {
+    const ok = await this.puedeVerForo(user, materiaId);
+    if (!ok) {
+      throw HttpError.forbidden(
+        'No estás inscripto en esta materia, así que no podés ver su foro.',
+      );
+    }
+  },
+
   /** Lista las publicaciones de una materia (fijadas primero, luego recientes). */
   async listPublicaciones(materiaId: string, query: ListPublicacionesQuery) {
     const where: Prisma.PublicacionWhereInput = { materiaId };
@@ -127,7 +165,9 @@ export const foroService = {
         tipo: data.tipo,
         titulo: data.titulo,
         contenido: data.contenido,
-        fijado: data.fijado ?? false,
+        // Los exámenes quedan fijados automáticamente para destacarse arriba.
+        fijado: data.tipo === 'EXAMEN' ? true : (data.fijado ?? false),
+        fechaExamen: data.tipo === 'EXAMEN' ? data.fechaExamen : null,
         adjuntos: {
           create: files.map((f) => ({
             nombreOriginal: decodeName(f.originalname),
@@ -213,11 +253,17 @@ export const foroService = {
     deleteStoredFile(adj.nombreAlmacenado);
   },
 
-  /** Datos de un adjunto para descargarlo (cualquier usuario autenticado). */
+  /** Datos de un adjunto para descargarlo. Incluye la materia para validar acceso. */
   async getAdjuntoForDownload(adjuntoId: string) {
     const adj = await prisma.adjunto.findUnique({
       where: { id: adjuntoId },
-      select: { id: true, nombreOriginal: true, nombreAlmacenado: true, mimeType: true },
+      select: {
+        id: true,
+        nombreOriginal: true,
+        nombreAlmacenado: true,
+        mimeType: true,
+        publicacion: { select: { materiaId: true } },
+      },
     });
     if (!adj) throw HttpError.notFound('Archivo no encontrado');
     return adj;
@@ -249,5 +295,92 @@ export const foroService = {
       throw HttpError.forbidden('Solo el autor o el staff pueden eliminar este comentario');
     }
     await prisma.comentario.delete({ where: { id: comentarioId } });
+  },
+
+  /**
+   * IDs de las materias cuyo foro puede ver el usuario:
+   *   - staff: todas
+   *   - docente: las asignadas
+   *   - alumno: aquellas en las que está inscripto a la cursada
+   */
+  async materiasAccesibles(user: JwtPayload): Promise<string[]> {
+    if (isStaff(user.rol)) {
+      const todas = await prisma.materia.findMany({ select: { id: true } });
+      return todas.map((m) => m.id);
+    }
+    if (user.rol === 'DOCENTE') {
+      const asignadas = await prisma.docenteMateria.findMany({
+        where: { usuarioId: user.sub },
+        select: { materiaId: true },
+      });
+      return asignadas.map((a) => a.materiaId);
+    }
+    // ALUMNO
+    const alumno = await prisma.alumno.findUnique({
+      where: { usuarioId: user.sub },
+      select: { id: true },
+    });
+    if (!alumno) return [];
+    const inscripciones = await prisma.inscripcion.findMany({
+      where: {
+        alumnoId: alumno.id,
+        tipo: 'CURSADA',
+        estado: { in: ['PENDIENTE', 'CONFIRMADA'] },
+      },
+      select: { materiaId: true },
+    });
+    return [...new Set(inscripciones.map((i) => i.materiaId))];
+  },
+
+  /**
+   * Agenda del usuario para el dashboard:
+   *   - examenes: próximos exámenes (tipo EXAMEN con fecha futura) de sus materias.
+   *   - novedades: últimas publicaciones (anuncios/material/discusión) sin ver.
+   */
+  async agenda(user: JwtPayload) {
+    const materiaIds = await this.materiasAccesibles(user);
+    if (materiaIds.length === 0) {
+      return { examenes: [], novedades: [] };
+    }
+
+    const materiaMini = { select: { id: true, codigo: true, nombre: true } };
+    const inicioHoy = new Date();
+    inicioHoy.setHours(0, 0, 0, 0);
+
+    const [examenes, novedades] = await Promise.all([
+      prisma.publicacion.findMany({
+        where: {
+          materiaId: { in: materiaIds },
+          tipo: 'EXAMEN',
+          fechaExamen: { gte: inicioHoy },
+        },
+        select: {
+          id: true,
+          titulo: true,
+          fechaExamen: true,
+          materia: materiaMini,
+        },
+        orderBy: { fechaExamen: 'asc' },
+        take: 6,
+      }),
+      prisma.publicacion.findMany({
+        where: {
+          materiaId: { in: materiaIds },
+          tipo: { in: ['ANUNCIO', 'MATERIAL', 'HILO'] },
+        },
+        select: {
+          id: true,
+          tipo: true,
+          titulo: true,
+          creadoEn: true,
+          materia: materiaMini,
+          autor: autorSelect,
+        },
+        orderBy: { creadoEn: 'desc' },
+        take: 6,
+      }),
+    ]);
+
+    return { examenes, novedades };
   },
 };

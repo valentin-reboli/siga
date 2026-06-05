@@ -2,6 +2,7 @@ import { Prisma, RolUsuario, EstadoCursada } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { HttpError } from '../../utils/httpError';
 import { hashPassword } from '../../utils/password';
+import { generarLegajo } from '../../utils/legajo';
 import { CreateAlumnoInput, ListAlumnosQuery, UpdateAlumnoInput } from './alumnos.schemas';
 
 const alumnoInclude = {
@@ -29,9 +30,10 @@ export const alumnosService = {
         },
       });
 
+      const legajo = await generarLegajo(tx, data.anioIngreso);
       return tx.alumno.create({
         data: {
-          legajo: data.legajo,
+          legajo,
           dni: data.dni,
           nombre: data.nombre,
           apellido: data.apellido,

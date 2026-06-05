@@ -3,7 +3,7 @@ import type { Paginated, RolUsuario, Usuario } from '../types';
 
 export interface CreateAlumnoPayload {
   nombre: string; apellido: string; email: string;
-  dni: string; legajo: string; carrera: string;
+  dni: string; carrera: string;
   anioIngreso: number; fechaNacimiento: string;
   telefono?: string; direccion?: string;
 }

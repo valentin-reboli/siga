@@ -7,6 +7,9 @@ export const createInscripcionSchema = z.object({
   tipo: z.nativeEnum(TipoInscripcion),
   cicloLectivo: z.coerce.number().int().min(2000).max(2100),
   fechaExamen: z.coerce.date().optional(),
+  // Clave que entrega el docente al inicio del cursado. Requerida cuando un
+  // alumno se inscribe a una CURSADA (el backend la valida).
+  clave: z.string().optional(),
 });
 
 export const updateInscripcionSchema = z.object({

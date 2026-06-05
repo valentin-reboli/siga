@@ -255,8 +255,8 @@ function ModalCrearAlumno({ onClose, onCreado }: { onClose: () => void; onCreado
 
   async function handleSubmit() {
     setError(null);
-    const { nombre, apellido, email, dni, legajo, carrera, anioIngreso, fechaNacimiento } = form;
-    if (!nombre || !apellido || !email || !dni || !legajo || !carrera || !anioIngreso || !fechaNacimiento) {
+    const { nombre, apellido, email, dni, carrera, anioIngreso, fechaNacimiento } = form;
+    if (!nombre || !apellido || !email || !dni || !carrera || !anioIngreso || !fechaNacimiento) {
       setError('Completá todos los campos obligatorios');
       return;
     }
@@ -297,8 +297,8 @@ function ModalCrearAlumno({ onClose, onCreado }: { onClose: () => void; onCreado
             <Input value={form.dni ?? ''} onChange={(e) => set('dni', e.target.value)} placeholder="40123456" />
           </div>
           <div>
-            <label className="form-label">Legajo *</label>
-            <Input value={form.legajo ?? ''} onChange={(e) => set('legajo', e.target.value)} placeholder="ENF-2026-001" />
+            <label className="form-label">Legajo</label>
+            <Input value="Se genera automáticamente" disabled readOnly />
           </div>
           <div className="col-span-2">
             <label className="form-label">Carrera *</label>

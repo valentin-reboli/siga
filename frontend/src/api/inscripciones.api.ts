@@ -19,6 +19,7 @@ export const inscripcionesApi = {
     tipo: TipoInscripcion;
     cicloLectivo: number;
     fechaExamen?: string;
+    clave?: string;
   }) => apiClient.post<Inscripcion>('/inscripciones', data).then((r) => r.data),
 
   update: (

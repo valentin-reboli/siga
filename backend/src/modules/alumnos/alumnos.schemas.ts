@@ -5,8 +5,7 @@ export const createAlumnoSchema = z.object({
   // Datos del usuario (se crea junto con el alumno)
   email: z.string().email(),
   password: z.string().min(8),
-  // Datos del alumno
-  legajo: z.string().min(1),
+  // Datos del alumno (el legajo se genera automáticamente: AAAA-NNNN)
   dni: z.string().min(7).max(10),
   nombre: z.string().min(2),
   apellido: z.string().min(2),

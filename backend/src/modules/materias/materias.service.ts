@@ -16,9 +16,18 @@ const materiaInclude = {
   },
 } satisfies Prisma.MateriaInclude;
 
+// Quita la clave de inscripción antes de devolver la materia: es secreta y no
+// debe viajar nunca al cliente.
+function sinClave<T extends { claveInscripcion?: string | null }>(materia: T): Omit<T, 'claveInscripcion'> {
+  const { claveInscripcion: _omitida, ...resto } = materia;
+  void _omitida;
+  return resto;
+}
+
 export const materiasService = {
   async create(data: CreateMateriaInput) {
-    return prisma.materia.create({ data, include: materiaInclude });
+    const materia = await prisma.materia.create({ data, include: materiaInclude });
+    return sinClave(materia);
   },
 
   async list(query: ListMateriasQuery) {
@@ -44,17 +53,18 @@ export const materiasService = {
       }),
     ]);
 
-    return { total, page: query.page, pageSize: query.pageSize, items };
+    return { total, page: query.page, pageSize: query.pageSize, items: items.map(sinClave) };
   },
 
   async getById(id: string) {
     const materia = await prisma.materia.findUnique({ where: { id }, include: materiaInclude });
     if (!materia) throw HttpError.notFound('Materia no encontrada');
-    return materia;
+    return sinClave(materia);
   },
 
   async update(id: string, data: UpdateMateriaInput) {
-    return prisma.materia.update({ where: { id }, data, include: materiaInclude });
+    const materia = await prisma.materia.update({ where: { id }, data, include: materiaInclude });
+    return sinClave(materia);
   },
 
   async addCorrelatividad(materiaId: string, data: CorrelatividadInput) {
