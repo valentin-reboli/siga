@@ -1,7 +1,8 @@
-import { Bell, LogOut, Search } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { getIniciales } from '../../utils/format';
 import { useAuth } from '../../hooks/useAuth';
+import { MateriaQuickSearch } from './MateriaQuickSearch';
 
 export function Header() {
   const { usuario, logout } = useAuth();
@@ -26,23 +27,8 @@ export function Header() {
         </div>
       </div>
 
-      {/* Buscador */}
-      <div className="flex-1 max-w-xl">
-        <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-          />
-          <input
-            type="search"
-            placeholder="Buscar materia, mesa, constancia…"
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-12 py-2 text-sm placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-navy-500"
-          />
-          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 border border-slate-300 bg-white rounded px-1.5 py-0.5">
-            ⌘K
-          </kbd>
-        </div>
-      </div>
+      {/* Buscador global de materias */}
+      <MateriaQuickSearch />
 
       {/* Notificaciones */}
       <button

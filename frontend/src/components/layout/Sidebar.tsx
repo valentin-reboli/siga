@@ -1,56 +1,28 @@
 import { NavLink } from 'react-router-dom';
-import {
-  Home, ClipboardList, FileText, BookOpen,
-  Calendar, FileBadge2, User, Users, UserCog, GraduationCap,
-} from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Home, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import type { RolUsuario } from '../../types';
+import { modulesForRole } from '../../config/modules';
 
-interface NavItem { to: string; label: string; icon: ReactNode; badge?: number }
-
-function getNavItems(rol?: RolUsuario): NavItem[] {
-  switch (rol) {
-    case 'ALUMNO':
-      return [
-        { to: '/', label: 'Inicio', icon: <Home size={18} /> },
-        { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
-        { to: '/legajo', label: 'Mi legajo académico', icon: <FileText size={18} /> },
-        { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
-        { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
-        { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
-        { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
-      ];
-
-    case 'DOCENTE':
-      return [
-        { to: '/', label: 'Inicio', icon: <Home size={18} /> },
-        { to: '/mis-materias', label: 'Mis materias', icon: <GraduationCap size={18} /> },
-        { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
-        { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
-      ];
-
-    case 'SUPERADMIN':
-    case 'ADMINISTRACION':
-    default:
-      return [
-        { to: '/', label: 'Inicio', icon: <Home size={18} /> },
-        { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
-        { to: '/legajo', label: 'Legajos de alumnos', icon: <Users size={18} /> },
-        { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
-        { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
-        { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
-        { to: '/usuarios', label: 'Gestión de usuarios', icon: <UserCog size={18} /> },
-        { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
-      ];
-  }
+interface NavItem {
+  to: string;
+  label: string;
+  Icon: LucideIcon;
 }
 
-interface PeriodoInfo { titulo: string; detalle: string; progreso: number }
+interface PeriodoInfo {
+  titulo: string;
+  detalle: string;
+  progreso: number;
+}
 
 export function Sidebar({ periodo }: { periodo?: PeriodoInfo }) {
   const { usuario } = useAuth();
-  const items = getNavItems(usuario?.rol);
+
+  // Inicio siempre primero; el resto sale de la config central de módulos.
+  const items: NavItem[] = [
+    { to: '/', label: 'Inicio', Icon: Home },
+    ...modulesForRole(usuario?.rol).map((m) => ({ to: m.to, label: m.navLabel, Icon: m.Icon })),
+  ];
 
   return (
     <aside className="w-64 shrink-0 border-r border-slate-200 bg-white flex flex-col">
@@ -58,7 +30,7 @@ export function Sidebar({ periodo }: { periodo?: PeriodoInfo }) {
         <p className="text-[11px] uppercase tracking-widest text-slate-400 font-medium">Menú</p>
       </div>
 
-      <nav className="flex-1 px-3 space-y-1">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {items.map((item) => (
           <NavLink
             key={item.to}
@@ -74,13 +46,10 @@ export function Sidebar({ periodo }: { periodo?: PeriodoInfo }) {
           >
             {({ isActive }) => (
               <>
-                <span className={isActive ? 'text-navy-700' : 'text-slate-400'}>{item.icon}</span>
+                <span className={isActive ? 'text-navy-700' : 'text-slate-400'}>
+                  <item.Icon size={18} />
+                </span>
                 <span className="flex-1">{item.label}</span>
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className="bg-cruz text-white text-[11px] font-semibold rounded-full px-1.5 py-0.5">
-                    {item.badge}
-                  </span>
-                )}
               </>
             )}
           </NavLink>
