@@ -144,10 +144,14 @@ export const inscripcionesService = {
     });
   },
 
-  async list(query: ListInscripcionesQuery) {
+  async list(query: ListInscripcionesQuery & { materiaIds?: string[] }) {
     const where: Prisma.InscripcionWhereInput = {};
     if (query.alumnoId) where.alumnoId = query.alumnoId;
-    if (query.materiaId) where.materiaId = query.materiaId;
+    if (query.materiaIds && query.materiaIds.length > 0) {
+      where.materiaId = { in: query.materiaIds };
+    } else if (query.materiaId) {
+      where.materiaId = query.materiaId;
+    }
     if (query.tipo) where.tipo = query.tipo;
     if (query.estado) where.estado = query.estado;
     if (query.cicloLectivo) where.cicloLectivo = query.cicloLectivo;

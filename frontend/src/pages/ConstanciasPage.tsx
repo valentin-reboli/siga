@@ -27,6 +27,7 @@ export function ConstanciasPage() {
   const { usuario } = useAuth();
   const isAlumno = usuario?.rol === 'ALUMNO';
   const isStaff = usuario?.rol === 'ADMIN' || usuario?.rol === 'ADMINISTRATIVO';
+  const canEmit = isStaff; // PRECEPTOR y DOCENTE solo leen
 
   const alumno = useApi(
     () => (isAlumno ? alumnosApi.me() : Promise.resolve(null)),
@@ -64,7 +65,7 @@ export function ConstanciasPage() {
                 <ItemConstanciaAdmin
                   key={c.id}
                   constancia={c}
-                  puedeEmitir={isStaff}
+                  puedeEmitir={canEmit}
                   onEmitida={() => constancias.reload()}
                 />
               ))}

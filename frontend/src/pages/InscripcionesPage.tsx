@@ -18,6 +18,8 @@ import type { EstadoCursada, EstadoInscripcion, Inscripcion } from '../types';
 export function InscripcionesPage() {
   const { usuario } = useAuth();
   const isAlumno = usuario?.rol === 'ALUMNO';
+  const isDocente = usuario?.rol === 'DOCENTE';
+  const isReadOnly = usuario?.rol === 'PRECEPTOR' || isDocente;
   const cicloLectivo = new Date().getFullYear();
 
   const alumno = useApi(
@@ -35,6 +37,25 @@ export function InscripcionesPage() {
 
   if (alumno.loading || inscripciones.loading) return <FullPageLoader />;
   if (alumno.error) return <ErrorAlert message={alumno.error} />;
+
+  // ── Vista docente: redirigir a Mis materias ───────────────────────────────
+  if (isDocente) {
+    return (
+      <div className="max-w-screen-xl mx-auto">
+        <Breadcrumb items={[{ label: 'SIGA', to: '/' }, { label: 'Inscripciones' }]} />
+        <div className="mb-6">
+          <h1 className="font-serif text-2xl font-semibold text-navy-900">Inscripciones</h1>
+          <p className="text-sm text-slate-500">
+            Como docente, gestionás las inscripciones desde{' '}
+            <a href="/mis-materias" className="text-navy-700 underline">Mis materias</a>.
+          </p>
+        </div>
+        {inscripciones.loading ? <Spinner /> : (
+          <TablaInscripcionesAdmin items={inscripciones.data?.items ?? []} readOnly />
+        )}
+      </div>
+    );
+  }
 
   // ── Vista admin / staff ────────────────────────────────────────────────────
   if (!isAlumno) {
@@ -58,55 +79,11 @@ export function InscripcionesPage() {
               No hay inscripciones para este ciclo.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-xs uppercase text-slate-500 border-b border-slate-200">
-                  <tr>
-                    <th className="text-left py-2 px-2 font-medium">Alumno</th>
-                    <th className="text-left py-2 px-2 font-medium">Materia</th>
-                    <th className="text-left py-2 px-2 font-medium">Tipo</th>
-                    <th className="text-left py-2 px-2 font-medium">Estado</th>
-                    <th className="text-left py-2 px-2 font-medium">Cursada</th>
-                    <th className="text-left py-2 px-2 font-medium">Nota</th>
-                    <th className="text-right py-2 px-2 font-medium">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {inscripciones.data.items.map((i) => (
-                    <tr key={i.id} className="hover:bg-slate-50">
-                      <td className="py-3 px-2">
-                        <p className="font-medium text-slate-900">
-                          {i.alumno ? `${i.alumno.apellido}, ${i.alumno.nombre}` : '—'}
-                        </p>
-                        <p className="text-xs text-slate-500">{i.alumno?.legajo}</p>
-                      </td>
-                      <td className="py-3 px-2">
-                        <p className="font-medium text-slate-900">{i.materia?.nombre}</p>
-                        <p className="text-xs text-slate-500">{i.materia?.codigo}</p>
-                      </td>
-                      <td className="py-3 px-2">
-                        {i.tipo === 'CURSADA' ? (
-                          <Badge tone="navy">Cursada</Badge>
-                        ) : (
-                          <Badge tone="info">Mesa</Badge>
-                        )}
-                      </td>
-                      <td className="py-3 px-2"><EstadoChip estado={i.estado} /></td>
-                      <td className="py-3 px-2 text-slate-700">{i.estadoCursada ?? '—'}</td>
-                      <td className="py-3 px-2 font-medium text-slate-900">{i.nota ?? '—'}</td>
-                      <td className="py-3 px-2 text-right">
-                        <button
-                          onClick={() => setEditando(i)}
-                          className="text-slate-500 hover:text-navy-700 inline-flex items-center gap-1 text-xs font-medium"
-                        >
-                          <Pencil size={14} /> Editar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TablaInscripcionesAdmin
+              items={inscripciones.data.items}
+              readOnly={isReadOnly}
+              onEditar={isReadOnly ? undefined : (i) => setEditando(i)}
+            />
           )}
         </Card>
 
@@ -176,6 +153,71 @@ export function InscripcionesPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+// ── Tabla admin (reutilizable) ────────────────────────────────────────────────
+
+function TablaInscripcionesAdmin({
+  items,
+  readOnly = false,
+  onEditar,
+}: {
+  items: Inscripcion[];
+  readOnly?: boolean;
+  onEditar?: (i: Inscripcion) => void;
+}) {
+  if (!items.length) return (
+    <p className="text-sm text-slate-500 italic py-6 text-center">No hay inscripciones.</p>
+  );
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="text-xs uppercase text-slate-500 border-b border-slate-200">
+          <tr>
+            <th className="text-left py-2 px-2 font-medium">Alumno</th>
+            <th className="text-left py-2 px-2 font-medium">Materia</th>
+            <th className="text-left py-2 px-2 font-medium">Tipo</th>
+            <th className="text-left py-2 px-2 font-medium">Estado</th>
+            <th className="text-left py-2 px-2 font-medium">Cursada</th>
+            <th className="text-left py-2 px-2 font-medium">Nota</th>
+            {!readOnly && <th className="text-right py-2 px-2 font-medium">Acciones</th>}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {items.map((i) => (
+            <tr key={i.id} className="hover:bg-slate-50">
+              <td className="py-3 px-2">
+                <p className="font-medium text-slate-900">
+                  {i.alumno ? `${i.alumno.apellido}, ${i.alumno.nombre}` : '—'}
+                </p>
+                <p className="text-xs text-slate-500">{i.alumno?.legajo}</p>
+              </td>
+              <td className="py-3 px-2">
+                <p className="font-medium text-slate-900">{i.materia?.nombre}</p>
+                <p className="text-xs text-slate-500">{i.materia?.codigo}</p>
+              </td>
+              <td className="py-3 px-2">
+                {i.tipo === 'CURSADA' ? <Badge tone="navy">Cursada</Badge> : <Badge tone="info">Mesa</Badge>}
+              </td>
+              <td className="py-3 px-2"><EstadoChip estado={i.estado} /></td>
+              <td className="py-3 px-2 text-slate-700">{i.estadoCursada ?? '—'}</td>
+              <td className="py-3 px-2 font-medium text-slate-900">{i.nota ?? '—'}</td>
+              {!readOnly && onEditar && (
+                <td className="py-3 px-2 text-right">
+                  <button
+                    onClick={() => onEditar(i)}
+                    className="text-slate-500 hover:text-navy-700 inline-flex items-center gap-1 text-xs font-medium"
+                  >
+                    <Pencil size={14} /> Editar
+                  </button>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

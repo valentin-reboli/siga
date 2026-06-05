@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, GraduationCap } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
 import { alumnosApi } from '../api/alumnos.api';
 import { inscripcionesApi } from '../api/inscripciones.api';
 import { constanciasApi } from '../api/constancias.api';
+import { usuariosApi } from '../api/usuarios.api';
 import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
 import { FullPageLoader, Spinner } from '../components/ui/Spinner';
 import { ErrorAlert } from '../components/ui/ErrorAlert';
 import { HeroSaludo } from './dashboard/HeroSaludo';
@@ -17,6 +19,7 @@ import { PanelAcciones, type AccionRequerida } from './dashboard/PanelAcciones';
 export function DashboardPage() {
   const { usuario } = useAuth();
   const isAlumno = usuario?.rol === 'ALUMNO';
+  const isDocente = usuario?.rol === 'DOCENTE';
 
   const alumno = useApi(
     () => (isAlumno ? alumnosApi.me() : Promise.resolve(null)),
@@ -29,7 +32,14 @@ export function DashboardPage() {
         : Promise.resolve(null),
     [isAlumno],
   );
-  const constancias = useApi(() => constanciasApi.list({ pageSize: 5 }), []);
+  const constancias = useApi(
+    () => (!isDocente ? constanciasApi.list({ pageSize: 5 }) : Promise.resolve(null)),
+    [isDocente],
+  );
+  const misMaterias = useApi(
+    () => (isDocente && usuario ? usuariosApi.getMaterias(usuario.id) : Promise.resolve(null)),
+    [isDocente, usuario?.id],
+  );
 
   const acciones = useMemo<AccionRequerida[]>(() => {
     if (!isAlumno) return [];
@@ -56,6 +66,69 @@ export function DashboardPage() {
     });
     return out;
   }, [inscripciones.data, constancias.data, isAlumno]);
+
+  // ── Dashboard para docente ────────────────────────────────────────────────
+  if (isDocente) {
+    if (misMaterias.loading) return <FullPageLoader />;
+    const materias: any[] = misMaterias.data ?? [];
+    return (
+      <div className="max-w-screen-2xl mx-auto">
+        <p className="text-xs text-slate-500 mb-2">SIGA / Inicio</p>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-slate-900">
+            Bienvenido, {usuario?.nombre} {usuario?.apellido}
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm">Docente · {new Date().getFullYear()}</p>
+        </div>
+
+        {materias.length === 0 ? (
+          <Card>
+            <div className="py-12 text-center">
+              <GraduationCap size={40} className="mx-auto text-slate-300 mb-3" />
+              <p className="font-medium text-slate-700">Todavía no tenés materias asignadas</p>
+              <p className="text-sm text-slate-500 mt-1">
+                Contactá al administrador para que te asigne tus materias.
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <div>
+            <p className="text-sm font-medium text-slate-700 mb-3">
+              Tus materias este ciclo ({materias.length})
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {materias.map((dm: any) => (
+                <Card key={dm.materiaId}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-navy-50 flex items-center justify-center text-xs font-semibold text-navy-700 shrink-0">
+                      {dm.materia.codigo.slice(-3)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-900 truncate">{dm.materia.nombre}</p>
+                      <p className="text-xs text-slate-500">
+                        {dm.materia.codigo} · {dm.materia.anio}° año · {dm.materia.cuatrimestre}° cuatr.
+                      </p>
+                      <Badge tone="neutral" className="mt-2 text-xs">
+                        {dm.materia.carrera.split(' ').slice(-1)[0]}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <Link
+                      to="/mis-materias"
+                      className="text-sm text-navy-700 hover:underline flex items-center gap-1"
+                    >
+                      Ver alumnos y calificar <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // ── Dashboard para staff / admin ──────────────────────────────────────────
   if (!isAlumno) {

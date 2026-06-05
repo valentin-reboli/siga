@@ -1,69 +1,63 @@
 import { NavLink } from 'react-router-dom';
 import {
-  Home,
-  ClipboardList,
-  FileText,
-  BookOpen,
-  Calendar,
-  FileBadge2,
-  User,
-  Users,
-  UserCog,
+  Home, ClipboardList, FileText, BookOpen,
+  Calendar, FileBadge2, User, Users, UserCog, GraduationCap,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import type { RolUsuario } from '../../types';
 
-interface NavItem {
-  to: string;
-  label: string;
-  icon: ReactNode;
-  badge?: number;
-}
+interface NavItem { to: string; label: string; icon: ReactNode; badge?: number }
 
 function getNavItems(rol?: RolUsuario): NavItem[] {
-  const base: NavItem[] = [
-    { to: '/', label: 'Inicio', icon: <Home size={18} /> },
-    { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
-    { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
-    { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
-  ];
+  switch (rol) {
+    case 'ALUMNO':
+      return [
+        { to: '/', label: 'Inicio', icon: <Home size={18} /> },
+        { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
+        { to: '/legajo', label: 'Mi legajo académico', icon: <FileText size={18} /> },
+        { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
+        { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
+        { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
+        { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
+      ];
 
-  if (rol === 'ALUMNO') {
-    return [
-      { to: '/', label: 'Inicio', icon: <Home size={18} /> },
-      { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
-      { to: '/legajo', label: 'Mi legajo académico', icon: <FileText size={18} /> },
-      { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
-      { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
-      { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
-      { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
-    ];
+    case 'DOCENTE':
+      return [
+        { to: '/', label: 'Inicio', icon: <Home size={18} /> },
+        { to: '/mis-materias', label: 'Mis materias', icon: <GraduationCap size={18} /> },
+        { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
+        { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
+      ];
+
+    case 'PRECEPTOR':
+      return [
+        { to: '/', label: 'Inicio', icon: <Home size={18} /> },
+        { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
+        { to: '/legajo', label: 'Legajos de alumnos', icon: <Users size={18} /> },
+        { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
+        { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
+        { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
+        { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
+      ];
+
+    case 'ADMIN':
+    case 'ADMINISTRATIVO':
+    default:
+      return [
+        { to: '/', label: 'Inicio', icon: <Home size={18} /> },
+        { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
+        { to: '/legajo', label: 'Legajos de alumnos', icon: <Users size={18} /> },
+        { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
+        { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
+        { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
+        { to: '/usuarios', label: 'Gestión de usuarios', icon: <UserCog size={18} /> },
+        { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
+      ];
   }
-
-  // Admin, Administrativo, Docente, Preceptor
-  const staffItems: NavItem[] = [
-    { to: '/', label: 'Inicio', icon: <Home size={18} /> },
-    { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
-    { to: '/legajo', label: 'Legajos de alumnos', icon: <Users size={18} /> },
-    { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
-    { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
-    { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
-    { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
-  ];
-
-  if (rol === 'ADMIN' || rol === 'ADMINISTRATIVO') {
-    staffItems.splice(5, 0, { to: '/usuarios', label: 'Gestión de usuarios', icon: <UserCog size={18} /> });
-  }
-
-  return staffItems;
 }
 
-interface PeriodoInfo {
-  titulo: string;
-  detalle: string;
-  progreso: number;
-}
+interface PeriodoInfo { titulo: string; detalle: string; progreso: number }
 
 export function Sidebar({ periodo }: { periodo?: PeriodoInfo }) {
   const { usuario } = useAuth();
