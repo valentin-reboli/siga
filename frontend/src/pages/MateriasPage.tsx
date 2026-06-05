@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { materiasApi } from '../api/materias.api';
 import { Card } from '../components/ui/Card';
@@ -8,7 +9,7 @@ import { Spinner } from '../components/ui/Spinner';
 import { ErrorAlert } from '../components/ui/ErrorAlert';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { colorMateria } from '../utils/format';
-import { Search } from 'lucide-react';
+import { Search, ChevronRight } from 'lucide-react';
 
 /**
  * Catálogo de materias visibles para cualquier usuario autenticado.
@@ -74,7 +75,11 @@ export function MateriasPage() {
             {materias.data.items.map((m) => {
               const color = colorMateria(m.codigo);
               return (
-                <li key={m.id} className="py-4 flex items-start gap-4">
+                <li key={m.id}>
+                  <Link
+                    to={`/materias/${m.id}`}
+                    className="group -mx-2 flex items-start gap-4 rounded-lg px-2 py-4 transition-colors hover:bg-slate-50"
+                  >
                   <div
                     className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0"
                     style={{ backgroundColor: color.bg, color: color.text }}
@@ -106,6 +111,11 @@ export function MateriasPage() {
                       </div>
                     )}
                   </div>
+                    <ChevronRight
+                      size={18}
+                      className="mt-1 shrink-0 self-center text-slate-300 transition-colors group-hover:text-navy-600"
+                    />
+                  </Link>
                 </li>
               );
             })}

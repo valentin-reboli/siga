@@ -144,3 +144,67 @@ export interface LoginResponse {
   token: string;
   usuario: Pick<Usuario, 'id' | 'email' | 'nombre' | 'apellido' | 'rol'>;
 }
+
+// =====================================================
+// Foro / aula virtual por materia
+// =====================================================
+
+export type TipoPublicacion = 'ANUNCIO' | 'MATERIAL' | 'HILO';
+
+export interface AutorMini {
+  id: string;
+  nombre: string;
+  apellido: string;
+  rol: RolUsuario;
+}
+
+export interface Adjunto {
+  id: string;
+  nombreOriginal: string;
+  mimeType: string;
+  tamano: number;
+  creadoEn: string;
+}
+
+export interface Comentario {
+  id: string;
+  contenido: string;
+  creadoEn: string;
+  autor: AutorMini;
+}
+
+export interface Publicacion {
+  id: string;
+  materiaId: string;
+  tipo: TipoPublicacion;
+  titulo: string;
+  contenido: string;
+  fijado: boolean;
+  creadoEn: string;
+  actualizadoEn: string;
+  autor: AutorMini;
+  adjuntos: Adjunto[];
+  _count?: { comentarios: number };
+}
+
+export interface PublicacionDetalle extends Publicacion {
+  comentarios: Comentario[];
+  materia: { id: string; codigo: string; nombre: string };
+  puedePublicar: boolean;
+}
+
+export interface ForoFeed {
+  materia: {
+    id: string;
+    codigo: string;
+    nombre: string;
+    carrera: string;
+    anio: number;
+    cuatrimestre: number;
+  };
+  puedePublicar: boolean;
+  total: number;
+  page: number;
+  pageSize: number;
+  items: Publicacion[];
+}

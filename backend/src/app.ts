@@ -10,6 +10,7 @@ import { alumnosRoutes } from './modules/alumnos/alumnos.routes';
 import { materiasRoutes } from './modules/materias/materias.routes';
 import { inscripcionesRoutes } from './modules/inscripciones/inscripciones.routes';
 import { constanciasRoutes } from './modules/constancias/constancias.routes';
+import { foroRoutes } from './modules/foro/foro.routes';
 
 export function createApp() {
   const app = express();
@@ -35,6 +36,7 @@ export function createApp() {
   app.use('/api/materias', materiasRoutes);
   app.use('/api/inscripciones', inscripcionesRoutes);
   app.use('/api/constancias', constanciasRoutes);
+  app.use('/api/foro', foroRoutes);
 
   // 404
   app.use((_req: Request, res: Response) => {

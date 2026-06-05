@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
+import multer from 'multer';
 import { HttpError } from '../utils/httpError';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -20,6 +21,18 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
       error: 'Datos inválidos',
       details: err.flatten().fieldErrors,
     });
+    return;
+  }
+
+  // Errores de subida de archivos (multer)
+  if (err instanceof multer.MulterError) {
+    const msg =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'El archivo supera el tamaño máximo permitido'
+        : err.code === 'LIMIT_FILE_COUNT'
+          ? 'Demasiados archivos en una sola publicación'
+          : `Error al subir archivo: ${err.message}`;
+    res.status(413).json({ error: msg });
     return;
   }
 

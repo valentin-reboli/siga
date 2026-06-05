@@ -41,6 +41,11 @@ export const PERMISSIONS = {
 
   // Constancias
   CONSTANCIAS_MANAGE: 'constancias:manage',
+
+  // Foro / aula virtual de cada materia.
+  // Habilita publicar, comentar y subir material. El controller acota al
+  // DOCENTE a sus materias asignadas; el staff puede publicar en cualquiera.
+  MATERIA_FORO_PUBLISH: 'materia_foro:publish',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -63,11 +68,14 @@ const ROLE_PERMISSIONS: Record<RolUsuario, Permission[]> = {
     PERMISSIONS.INSCRIPCIONES_VIEW_ALL,
     PERMISSIONS.INSCRIPCIONES_GRADE,
     PERMISSIONS.CONSTANCIAS_MANAGE,
+    PERMISSIONS.MATERIA_FORO_PUBLISH,
   ],
 
   [RolUsuario.DOCENTE]: [
     // El docente puede calificar, pero el controller lo acota a SUS materias.
     PERMISSIONS.INSCRIPCIONES_GRADE,
+    // Publica en el foro de SUS materias (ownership check en el controller).
+    PERMISSIONS.MATERIA_FORO_PUBLISH,
   ],
 
   [RolUsuario.ALUMNO]: [

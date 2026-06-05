@@ -23,6 +23,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Archivos subidos al foro (no versionar contenido de los usuarios)
+backend/uploads/
+uploads/
+
 # Prisma
 backend/prisma/migrations/dev.db*
 backend/prisma/*.db

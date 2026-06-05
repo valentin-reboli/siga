@@ -90,6 +90,8 @@ model Usuario {
 
   alumno          Alumno?
   docenteMaterias DocenteMateria[]
+  publicaciones   Publicacion[]
+  comentarios     Comentario[]
 
   @@index([email])
   @@index([rol])
@@ -142,6 +144,7 @@ model Materia {
 
   inscripciones Inscripcion[]
   docentes      DocenteMateria[]
+  publicaciones Publicacion[]
 
   @@index([codigo])
   @@index([carrera, anio])
@@ -219,4 +222,70 @@ model Constancia {
   @@index([codigoVerificacion])
   @@index([estado])
   @@map("constancias")
+}
+
+// ===================================================
+// FORO / AULA VIRTUAL POR MATERIA
+// ===================================================
+// Cada materia tiene un espacio tipo foro donde el docente (o staff
+// administrativo) publica ANUNCIOS, MATERIAL de cátedra y abre HILOS de
+// discusión. Los alumnos acceden en modo lectura/descarga.
+
+enum TipoPublicacion {
+  ANUNCIO   // novedad / aviso de la cátedra
+  MATERIAL  // apunte, guía, bibliografía (suele llevar adjuntos)
+  HILO      // tema de discusión
+}
+
+model Publicacion {
+  id            String          @id @default(uuid())
+  materiaId     String
+  materia       Materia         @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+  autorId       String
+  autor         Usuario         @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  tipo          TipoPublicacion @default(ANUNCIO)
+  titulo        String
+  contenido     String
+  fijado        Boolean         @default(false) // anclado arriba del feed
+  creadoEn      DateTime        @default(now())
+  actualizadoEn DateTime        @updatedAt
+
+  adjuntos      Adjunto[]
+  comentarios   Comentario[]
+
+  @@index([materiaId])
+  @@index([autorId])
+  @@index([materiaId, fijado, creadoEn])
+  @@map("publicaciones")
+}
+
+model Adjunto {
+  id               String      @id @default(uuid())
+  publicacionId    String
+  publicacion      Publicacion @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+
+  nombreOriginal   String // nombre con el que el usuario subió el archivo
+  nombreAlmacenado String @unique // nombre aleatorio en disco (uuid + ext)
+  mimeType         String
+  tamano           Int // bytes
+  creadoEn         DateTime    @default(now())
+
+  @@index([publicacionId])
+  @@map("adjuntos")
+}
+
+model Comentario {
+  id            String      @id @default(uuid())
+  publicacionId String
+  publicacion   Publicacion @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  autorId       String
+  autor         Usuario     @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  contenido     String
+  creadoEn      DateTime    @default(now())
+
+  @@index([publicacionId])
+  @@index([autorId])
+  @@map("comentarios")
 }
