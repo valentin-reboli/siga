@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate, requireRole } from '../../middleware/auth';
+import { authenticate } from '../../middleware/auth';
+import { requirePermission, PERMISSIONS } from '../../auth/permissions';
 import { validate } from '../../middleware/validate';
 import { inscripcionesController } from './inscripciones.controller';
 import {
@@ -7,26 +8,25 @@ import {
   listInscripcionesQuerySchema,
   updateInscripcionSchema,
 } from './inscripciones.schemas';
-import { RolUsuario } from '@prisma/client';
 
 const router = Router();
 router.use(authenticate);
 
-// Listar - alumno ve solo las suyas (el controller filtra)
+// Listar - alumno ve solo las suyas, docente las de sus materias (controller filtra)
 router.get('/', validate(listInscripcionesQuerySchema, 'query'), inscripcionesController.list);
 
-// Crear inscripción - alumno o staff
+// Crear inscripción - alumno (para sí mismo) o staff (controller valida propiedad)
 router.post('/', validate(createInscripcionSchema), inscripcionesController.create);
 
-// Cargar nota/estado de cursada - solo docente/staff
+// Cargar nota/estado de cursada - docente (sus materias) o staff
 router.patch(
   '/:id',
-  requireRole(RolUsuario.ADMIN, RolUsuario.ADMINISTRATIVO, RolUsuario.DOCENTE),
+  requirePermission(PERMISSIONS.INSCRIPCIONES_GRADE),
   validate(updateInscripcionSchema),
   inscripcionesController.update,
 );
 
-// Cancelar inscripción - el alumno o el staff
+// Cancelar inscripción - el alumno (la suya) o el staff (controller valida propiedad)
 router.delete('/:id', inscripcionesController.cancel);
 
 export const inscripcionesRoutes = router;

@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { usuariosService } from './usuarios.service';
+import { HttpError } from '../../utils/httpError';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 
 export const usuariosController = {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -43,6 +45,14 @@ export const usuariosController = {
   },
 
   async getMaterias(req: Request, res: Response, next: NextFunction) {
-    try { res.json(await usuariosService.getMaterias(req.params.id)); } catch (err) { next(err); }
+    try {
+      if (!req.user) throw HttpError.unauthorized();
+      // El usuario puede ver sus propias materias; el staff puede ver las de cualquiera.
+      const esPropio = req.user.sub === req.params.id;
+      if (!esPropio && !hasPermission(req.user.rol, PERMISSIONS.USERS_VIEW)) {
+        throw HttpError.forbidden('No podés ver las materias de otro usuario');
+      }
+      res.json(await usuariosService.getMaterias(req.params.id));
+    } catch (err) { next(err); }
   },
 };

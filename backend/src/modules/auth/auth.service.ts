@@ -7,6 +7,15 @@ import { RolUsuario } from '@prisma/client';
 
 export const authService = {
   async register(data: RegisterInput) {
+    // El rol ALUMNO requiere crear también su perfil en la tabla `alumnos`.
+    // Para no generar usuarios huérfanos, el alta de alumnos va por
+    // /api/usuarios/alumnos. Este endpoint solo crea cuentas de staff.
+    if (data.rol === RolUsuario.ALUMNO) {
+      throw HttpError.badRequest(
+        'Para crear un alumno usá /api/usuarios/alumnos (crea usuario + legajo).',
+      );
+    }
+
     const existing = await prisma.usuario.findUnique({ where: { email: data.email } });
     if (existing) {
       throw HttpError.conflict('Ya existe un usuario con ese email');
@@ -19,7 +28,7 @@ export const authService = {
         passwordHash,
         nombre: data.nombre,
         apellido: data.apellido,
-        rol: data.rol ?? RolUsuario.ALUMNO,
+        rol: data.rol ?? RolUsuario.DOCENTE,
       },
       select: {
         id: true,

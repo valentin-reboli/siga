@@ -104,7 +104,7 @@ export const usuariosService = {
   },
 
   /**
-   * Crea un usuario de staff (DOCENTE, ADMINISTRATIVO, PRECEPTOR).
+   * Crea un usuario de staff (DOCENTE o ADMINISTRACION).
    * Devuelve el usuario y la contraseña generada.
    */
   async createStaff(data: CreateStaffInput) {

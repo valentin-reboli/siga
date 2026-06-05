@@ -4,10 +4,9 @@
 // =====================================================
 
 export type RolUsuario =
-  | 'ADMIN'
-  | 'ADMINISTRATIVO'
+  | 'SUPERADMIN'
+  | 'ADMINISTRACION'
   | 'DOCENTE'
-  | 'PRECEPTOR'
   | 'ALUMNO';
 
 export type EstadoAlumno = 'ACTIVO' | 'INACTIVO' | 'EGRESADO' | 'SUSPENDIDO';

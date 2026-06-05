@@ -32,4 +32,8 @@ export class HttpError extends Error {
   static unprocessable(message = 'Entidad no procesable', details?: unknown) {
     return new HttpError(422, message, details);
   }
+
+  static tooManyRequests(message = 'Demasiadas solicitudes') {
+    return new HttpError(429, message);
+  }
 }

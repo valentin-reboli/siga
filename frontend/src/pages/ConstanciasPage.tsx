@@ -26,8 +26,8 @@ const TIPOS: { value: TipoConstancia; label: string }[] = [
 export function ConstanciasPage() {
   const { usuario } = useAuth();
   const isAlumno = usuario?.rol === 'ALUMNO';
-  const isStaff = usuario?.rol === 'ADMIN' || usuario?.rol === 'ADMINISTRATIVO';
-  const canEmit = isStaff; // PRECEPTOR y DOCENTE solo leen
+  const isStaff = usuario?.rol === 'SUPERADMIN' || usuario?.rol === 'ADMINISTRACION';
+  const canEmit = isStaff; // gestión de constancias = SUPERADMIN / ADMINISTRACION
 
   const alumno = useApi(
     () => (isAlumno ? alumnosApi.me() : Promise.resolve(null)),

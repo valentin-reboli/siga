@@ -16,11 +16,16 @@ datasource db {
 // ENUMS
 // ===================================================
 
+// Modelo de roles consolidado (4 roles).
+// SUPERADMIN      → Soporte IT / Dirección. Control total (God Mode).
+// ADMINISTRACION  → Gestión Académica + Preceptoría (fusión de los antiguos
+//                   ADMINISTRATIVO y PRECEPTOR).
+// DOCENTE         → Acceso acotado a sus materias asignadas.
+// ALUMNO          → Acceso a su propia información académica.
 enum RolUsuario {
-  ADMIN
-  ADMINISTRATIVO
+  SUPERADMIN
+  ADMINISTRACION
   DOCENTE
-  PRECEPTOR
   ALUMNO
 }
 

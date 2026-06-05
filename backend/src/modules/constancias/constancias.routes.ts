@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate, requireRole } from '../../middleware/auth';
+import { authenticate } from '../../middleware/auth';
+import { requirePermission, PERMISSIONS } from '../../auth/permissions';
 import { validate } from '../../middleware/validate';
 import { constanciasController } from './constancias.controller';
 import {
@@ -7,7 +8,6 @@ import {
   listConstanciasQuerySchema,
   updateConstanciaSchema,
 } from './constancias.schemas';
-import { RolUsuario } from '@prisma/client';
 
 const router = Router();
 
@@ -18,12 +18,13 @@ router.use(authenticate);
 
 router.get('/', validate(listConstanciasQuerySchema, 'query'), constanciasController.list);
 router.post('/', validate(createConstanciaSchema), constanciasController.create);
+// getById/getPdf validan propiedad en el controller (alumno dueño o staff).
 router.get('/:id', constanciasController.getById);
 router.get('/:id/pdf', constanciasController.getPdf);
 
-// Emisión y actualización: solo staff
-const staff = requireRole(RolUsuario.ADMIN, RolUsuario.ADMINISTRATIVO);
-router.patch('/:id', staff, validate(updateConstanciaSchema), constanciasController.update);
-router.post('/:id/emitir', staff, constanciasController.emitir);
+// Gestión (aprobar/rechazar/emitir): SUPERADMIN y ADMINISTRACION.
+const canManage = requirePermission(PERMISSIONS.CONSTANCIAS_MANAGE);
+router.patch('/:id', canManage, validate(updateConstanciaSchema), constanciasController.update);
+router.post('/:id/emitir', canManage, constanciasController.emitir);
 
 export const constanciasRoutes = router;

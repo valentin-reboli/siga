@@ -10,7 +10,7 @@ export interface CreateAlumnoPayload {
 
 export interface CreateStaffPayload {
   nombre: string; apellido: string; email: string;
-  rol: 'DOCENTE' | 'ADMINISTRATIVO' | 'PRECEPTOR';
+  rol: 'DOCENTE' | 'ADMINISTRACION';
 }
 
 export interface CreatedUserResult {

@@ -2,7 +2,25 @@ import { Request, Response, NextFunction } from 'express';
 import { constanciasService } from './constancias.service';
 import { HttpError } from '../../utils/httpError';
 import { RolUsuario } from '@prisma/client';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { alumnosService } from '../alumnos/alumnos.service';
+
+/**
+ * Verifica que el usuario pueda acceder a una constancia concreta:
+ * el alumno dueño, o staff con permiso de gestión. Evita IDOR.
+ */
+async function assertPuedeVerConstancia(
+  user: { sub: string; rol: RolUsuario },
+  constanciaId: string,
+): Promise<void> {
+  if (hasPermission(user.rol, PERMISSIONS.CONSTANCIAS_MANAGE)) return;
+  if (user.rol === RolUsuario.ALUMNO) {
+    const constancia = await constanciasService.getById(constanciaId);
+    const propio = await alumnosService.getByUsuarioId(user.sub);
+    if (constancia.alumnoId === propio.id) return;
+  }
+  throw HttpError.forbidden('No tenés acceso a esta constancia');
+}
 
 export const constanciasController = {
   async create(req: Request, res: Response, next: NextFunction) {
@@ -37,6 +55,8 @@ export const constanciasController = {
 
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
+      if (!req.user) throw HttpError.unauthorized();
+      await assertPuedeVerConstancia(req.user, req.params.id);
       res.json(await constanciasService.getById(req.params.id));
     } catch (err) {
       next(err);
@@ -62,6 +82,8 @@ export const constanciasController = {
 
   async getPdf(req: Request, res: Response, next: NextFunction) {
     try {
+      if (!req.user) throw HttpError.unauthorized();
+      await assertPuedeVerConstancia(req.user, req.params.id);
       const pdf = await constanciasService.getPdf(req.params.id);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(

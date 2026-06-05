@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { inscripcionesService } from './inscripciones.service';
 import { HttpError } from '../../utils/httpError';
 import { RolUsuario } from '@prisma/client';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { alumnosService } from '../alumnos/alumnos.service';
 import { prisma } from '../../config/prisma';
 
@@ -14,6 +15,9 @@ export const inscripcionesController = {
         if (propio.id !== req.body.alumnoId) {
           throw HttpError.forbidden('Solo podés inscribirte a vos mismo');
         }
+      } else if (!hasPermission(req.user.rol, PERMISSIONS.INSCRIPCIONES_VIEW_ALL)) {
+        // Un docente no inscribe alumnos.
+        throw HttpError.forbidden('No tenés permisos para inscribir alumnos');
       }
       res.status(201).json(await inscripcionesService.create(req.body));
     } catch (err) {
@@ -42,7 +46,7 @@ export const inscripcionesController = {
         }
         query.materiaIds = asignadas.map((dm) => dm.materiaId);
       }
-      // ADMIN, ADMINISTRATIVO, PRECEPTOR ven todo
+      // El staff con INSCRIPCIONES_VIEW_ALL (SUPERADMIN, ADMINISTRACION) ve todo.
 
       res.json(await inscripcionesService.list(query));
     } catch (err) {
@@ -76,6 +80,24 @@ export const inscripcionesController = {
 
   async cancel(req: Request, res: Response, next: NextFunction) {
     try {
+      if (!req.user) throw HttpError.unauthorized();
+
+      // Antes cualquier alumno podía cancelar la inscripción de otro -> IDOR.
+      // El alumno solo cancela las suyas; el staff con permiso, cualquiera.
+      if (req.user.rol === RolUsuario.ALUMNO) {
+        const inscripcion = await prisma.inscripcion.findUnique({
+          where: { id: req.params.id },
+          select: { alumnoId: true },
+        });
+        if (!inscripcion) throw HttpError.notFound('Inscripción no encontrada');
+        const propio = await alumnosService.getByUsuarioId(req.user.sub);
+        if (inscripcion.alumnoId !== propio.id) {
+          throw HttpError.forbidden('Solo podés cancelar tus propias inscripciones');
+        }
+      } else if (!hasPermission(req.user.rol, PERMISSIONS.INSCRIPCIONES_VIEW_ALL)) {
+        throw HttpError.forbidden('No tenés permisos para cancelar inscripciones');
+      }
+
       res.json(await inscripcionesService.cancel(req.params.id));
     } catch (err) {
       next(err);

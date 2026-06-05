@@ -51,15 +51,15 @@ async function main() {
   // ── Usuarios institucionales ──────────────────────────────────────────────
   const admin = await upsertUsuario({
     email: 'admin@iscr.edu.ar', password: 'admin1234',
-    nombre: 'Admin', apellido: 'SIGA', rol: RolUsuario.ADMIN,
+    nombre: 'Admin', apellido: 'SIGA', rol: RolUsuario.SUPERADMIN,
   });
-  console.log(`✓ Admin:          ${admin.email} / admin1234`);
+  console.log(`✓ Superadmin:     ${admin.email} / admin1234`);
 
   const administrativo = await upsertUsuario({
     email: 'secretaria@iscr.edu.ar', password: 'secretaria1234',
-    nombre: 'María', apellido: 'González', rol: RolUsuario.ADMINISTRATIVO,
+    nombre: 'María', apellido: 'González', rol: RolUsuario.ADMINISTRACION,
   });
-  console.log(`✓ Administrativo: ${administrativo.email} / secretaria1234`);
+  console.log(`✓ Administración: ${administrativo.email} / secretaria1234`);
 
   const docenteEnf = await upsertUsuario({
     email: 'prof.enfermeria@iscr.edu.ar', password: 'docente1234',
@@ -276,8 +276,8 @@ async function main() {
 
   console.log('\n✅ Seed completado.\n');
   console.log('Accesos disponibles:');
-  console.log('  admin@iscr.edu.ar          / admin1234        (ADMIN)');
-  console.log('  secretaria@iscr.edu.ar     / secretaria1234   (ADMINISTRATIVO)');
+  console.log('  admin@iscr.edu.ar          / admin1234        (SUPERADMIN)');
+  console.log('  secretaria@iscr.edu.ar     / secretaria1234   (ADMINISTRACION)');
   console.log('  prof.enfermeria@iscr.edu.ar / docente1234     (DOCENTE)');
   console.log('  prof.laboratorio@iscr.edu.ar / docente1234    (DOCENTE)');
   console.log('  aperez@iscr.edu.ar         / alumno1234       (ALUMNO - Enfermería)');

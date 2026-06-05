@@ -23,7 +23,10 @@ type Tab = 'alumnos' | 'staff';
 
 export function GestionUsuariosPage() {
   const { usuario } = useAuth();
-  const isAdmin = usuario?.rol === 'ADMIN';
+  // Acciones sensibles (crear staff, suspender) → solo SUPERADMIN.
+  const isSuperadmin = usuario?.rol === 'SUPERADMIN';
+  // Asignar docentes a materias → todo el staff (SUPERADMIN + ADMINISTRACION).
+  const isStaff = isSuperadmin || usuario?.rol === 'ADMINISTRACION';
   const [tab, setTab] = useState<Tab>('alumnos');
   const [modalTipo, setModalTipo] = useState<'alumno' | 'staff' | null>(null);
   const [credenciales, setCredenciales] = useState<{ email: string; password: string } | null>(null);
@@ -53,7 +56,7 @@ export function GestionUsuariosPage() {
           <Button onClick={() => setModalTipo('alumno')} leftIcon={<UserPlus size={16} />}>
             Nuevo alumno
           </Button>
-          {isAdmin && (
+          {isSuperadmin && (
             <Button variant="secondary" onClick={() => setModalTipo('staff')} leftIcon={<UserPlus size={16} />}>
               Nuevo staff
             </Button>
@@ -82,13 +85,13 @@ export function GestionUsuariosPage() {
         {tab === 'alumnos' ? (
           <TablaUsuarios
             items={alumnos}
-            onDeactivate={isAdmin ? async (id) => { await usuariosApi.deactivate(id); usuarios.reload(); } : undefined}
+            onDeactivate={isSuperadmin ? async (id) => { await usuariosApi.deactivate(id); usuarios.reload(); } : undefined}
           />
         ) : (
           <TablaUsuarios
             items={staff}
-            showMaterias={isAdmin}
-            onDeactivate={isAdmin ? async (id) => { await usuariosApi.deactivate(id); usuarios.reload(); } : undefined}
+            showMaterias={isStaff}
+            onDeactivate={isSuperadmin ? async (id) => { await usuariosApi.deactivate(id); usuarios.reload(); } : undefined}
           />
         )}
       </Card>
@@ -141,10 +144,9 @@ function TablaUsuarios({
   onDeactivate?: (id: string) => Promise<void>;
 }) {
   const rolColor: Record<RolUsuario, 'success' | 'info' | 'navy' | 'warn' | 'neutral'> = {
-    ADMIN: 'danger' as any,
-    ADMINISTRATIVO: 'info',
+    SUPERADMIN: 'danger' as any,
+    ADMINISTRACION: 'info',
     DOCENTE: 'navy',
-    PRECEPTOR: 'warn',
     ALUMNO: 'success',
   };
 
@@ -385,8 +387,7 @@ function ModalCrearStaff({ onClose, onCreado }: { onClose: () => void; onCreado:
             <label className="form-label">Rol *</label>
             <select value={form.rol ?? 'DOCENTE'} onChange={(e) => set('rol', e.target.value)} className="form-input">
               <option value="DOCENTE">Docente</option>
-              <option value="ADMINISTRATIVO">Administrativo</option>
-              <option value="PRECEPTOR">Preceptor</option>
+              <option value="ADMINISTRACION">Administración</option>
             </select>
           </div>
         </div>

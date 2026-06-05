@@ -19,7 +19,7 @@ export function InscripcionesPage() {
   const { usuario } = useAuth();
   const isAlumno = usuario?.rol === 'ALUMNO';
   const isDocente = usuario?.rol === 'DOCENTE';
-  const isReadOnly = usuario?.rol === 'PRECEPTOR' || isDocente;
+  const isReadOnly = isDocente; // el docente solo consulta; el staff puede operar
   const cicloLectivo = new Date().getFullYear();
 
   const alumno = useApi(

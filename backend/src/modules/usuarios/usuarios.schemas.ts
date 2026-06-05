@@ -30,12 +30,12 @@ export const createAlumnoSchema = z.object({
   direccion: z.string().optional(),
 });
 
-// Crear staff (docente, administrativo, preceptor)
+// Crear staff (docente o administración). SUPERADMIN no se crea por este flujo.
 export const createStaffSchema = z.object({
   nombre: z.string().min(2),
   apellido: z.string().min(2),
   email: z.string().email(),
-  rol: z.enum([RolUsuario.DOCENTE, RolUsuario.ADMINISTRATIVO, RolUsuario.PRECEPTOR]),
+  rol: z.enum([RolUsuario.DOCENTE, RolUsuario.ADMINISTRACION]),
 });
 
 export type UpdateUsuarioInput = z.infer<typeof updateUsuarioSchema>;

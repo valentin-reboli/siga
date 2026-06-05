@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { RoleRoute } from './components/RoleRoute';
 import { AppLayout } from './components/layout/AppLayout';
 
 import { LoginPage } from './pages/LoginPage';
@@ -38,8 +39,25 @@ export default function App() {
             <Route path="/calendario" element={<CalendarioPage />} />
             <Route path="/constancias" element={<ConstanciasPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
-            <Route path="/usuarios" element={<GestionUsuariosPage />} />
-            <Route path="/mis-materias" element={<MisMateriasPage />} />
+
+            {/* Gestión de usuarios: solo staff administrativo */}
+            <Route
+              path="/usuarios"
+              element={
+                <RoleRoute allow={['SUPERADMIN', 'ADMINISTRACION']}>
+                  <GestionUsuariosPage />
+                </RoleRoute>
+              }
+            />
+            {/* Panel del docente */}
+            <Route
+              path="/mis-materias"
+              element={
+                <RoleRoute allow={['DOCENTE', 'SUPERADMIN']}>
+                  <MisMateriasPage />
+                </RoleRoute>
+              }
+            />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
 

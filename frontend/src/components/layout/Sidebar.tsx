@@ -30,19 +30,8 @@ function getNavItems(rol?: RolUsuario): NavItem[] {
         { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
       ];
 
-    case 'PRECEPTOR':
-      return [
-        { to: '/', label: 'Inicio', icon: <Home size={18} /> },
-        { to: '/inscripciones', label: 'Inscripciones', icon: <ClipboardList size={18} /> },
-        { to: '/legajo', label: 'Legajos de alumnos', icon: <Users size={18} /> },
-        { to: '/materias', label: 'Catálogo de materias', icon: <BookOpen size={18} /> },
-        { to: '/calendario', label: 'Calendario académico', icon: <Calendar size={18} /> },
-        { to: '/constancias', label: 'Constancias', icon: <FileBadge2 size={18} /> },
-        { to: '/perfil', label: 'Mi perfil', icon: <User size={18} /> },
-      ];
-
-    case 'ADMIN':
-    case 'ADMINISTRATIVO':
+    case 'SUPERADMIN':
+    case 'ADMINISTRACION':
     default:
       return [
         { to: '/', label: 'Inicio', icon: <Home size={18} /> },

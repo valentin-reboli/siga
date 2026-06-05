@@ -1,20 +1,27 @@
 import { Router } from 'express';
 import { authController } from './auth.controller';
-import { authenticate, requireRole } from '../../middleware/auth';
+import { authenticate } from '../../middleware/auth';
+import { requirePermission, PERMISSIONS } from '../../auth/permissions';
+import { rateLimit } from '../../middleware/rateLimit';
 import { validate } from '../../middleware/validate';
 import { loginSchema, registerSchema } from './auth.schemas';
-import { RolUsuario } from '@prisma/client';
 
 const router = Router();
 
-// Login público
-router.post('/login', validate(loginSchema), authController.login);
+// Login público — con rate limit para mitigar fuerza bruta.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // 10 intentos por IP por ventana
+  message: 'Demasiados intentos de inicio de sesión. Esperá unos minutos.',
+});
+router.post('/login', loginLimiter, validate(loginSchema), authController.login);
 
-// Registro: solo ADMIN o ADMINISTRATIVO pueden crear cuentas institucionales
+// Registro genérico: solo SUPERADMIN (evita escalada de privilegios).
+// El alta normal de usuarios va por /api/usuarios (alumnos/staff).
 router.post(
   '/register',
   authenticate,
-  requireRole(RolUsuario.ADMIN, RolUsuario.ADMINISTRATIVO),
+  requirePermission(PERMISSIONS.USERS_CREATE_STAFF),
   validate(registerSchema),
   authController.register,
 );

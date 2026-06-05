@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate, requireRole } from '../../middleware/auth';
+import { authenticate } from '../../middleware/auth';
+import { requirePermission, PERMISSIONS } from '../../auth/permissions';
 import { validate } from '../../middleware/validate';
 import { usuariosController } from './usuarios.controller';
 import {
@@ -8,29 +9,26 @@ import {
   createAlumnoSchema,
   createStaffSchema,
 } from './usuarios.schemas';
-import { RolUsuario } from '@prisma/client';
 
 const router = Router();
 router.use(authenticate);
 
-const onlyAdmin = requireRole(RolUsuario.ADMIN);
-const adminOrAdministrativo = requireRole(RolUsuario.ADMIN, RolUsuario.ADMINISTRATIVO);
-
 // Listar y ver usuarios
-router.get('/', adminOrAdministrativo, validate(listUsuariosQuerySchema, 'query'), usuariosController.list);
-router.get('/:id', adminOrAdministrativo, usuariosController.getById);
+router.get('/', requirePermission(PERMISSIONS.USERS_VIEW), validate(listUsuariosQuerySchema, 'query'), usuariosController.list);
+router.get('/:id', requirePermission(PERMISSIONS.USERS_VIEW), usuariosController.getById);
 
 // Crear usuarios
-router.post('/alumnos', adminOrAdministrativo, validate(createAlumnoSchema), usuariosController.createAlumno);
-router.post('/staff', onlyAdmin, validate(createStaffSchema), usuariosController.createStaff);
+router.post('/alumnos', requirePermission(PERMISSIONS.USERS_CREATE_ALUMNO), validate(createAlumnoSchema), usuariosController.createAlumno);
+router.post('/staff', requirePermission(PERMISSIONS.USERS_CREATE_STAFF), validate(createStaffSchema), usuariosController.createStaff);
 
-// Editar / desactivar
-router.patch('/:id', onlyAdmin, validate(updateUsuarioSchema), usuariosController.update);
-router.delete('/:id', onlyAdmin, usuariosController.deactivate);
+// Editar / desactivar (suspender) — solo SUPERADMIN
+router.patch('/:id', requirePermission(PERMISSIONS.USERS_UPDATE), validate(updateUsuarioSchema), usuariosController.update);
+router.delete('/:id', requirePermission(PERMISSIONS.USERS_UPDATE), usuariosController.deactivate);
 
-// Materias de un docente
-router.get('/:id/materias', adminOrAdministrativo, usuariosController.getMaterias);
-router.post('/:id/materias', onlyAdmin, usuariosController.assignMateria);
-router.delete('/:id/materias/:materiaId', onlyAdmin, usuariosController.removeMateria);
+// Materias de un docente. La autorización (propio o staff) se resuelve en el
+// controller para que un docente pueda ver SUS propias asignaciones.
+router.get('/:id/materias', usuariosController.getMaterias);
+router.post('/:id/materias', requirePermission(PERMISSIONS.USERS_ASSIGN_MATERIA), usuariosController.assignMateria);
+router.delete('/:id/materias/:materiaId', requirePermission(PERMISSIONS.USERS_ASSIGN_MATERIA), usuariosController.removeMateria);
 
 export const usuariosRoutes = router;

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { alumnosService } from './alumnos.service';
 import { HttpError } from '../../utils/httpError';
 import { RolUsuario } from '@prisma/client';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 
 export const alumnosController = {
   async create(req: Request, res: Response, next: NextFunction) {
@@ -64,6 +65,9 @@ export const alumnosController = {
         if (propio.id !== targetId) {
           throw HttpError.forbidden('Solo podés acceder a tu propio legajo');
         }
+      } else if (!hasPermission(req.user.rol, PERMISSIONS.STUDENTS_VIEW)) {
+        // Un docente, por ejemplo, no puede leer legajos arbitrarios.
+        throw HttpError.forbidden('No tenés permisos para ver este legajo');
       }
 
       const result = await alumnosService.getLegajo(targetId);
