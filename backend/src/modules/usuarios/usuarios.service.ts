@@ -57,6 +57,24 @@ export const usuariosService = {
     return prisma.usuario.update({ where: { id }, data: { activo: false }, select: usuarioSelect });
   },
 
+  /** Actualiza la foto de perfil del propio usuario (data URL). */
+  async updateAvatar(id: string, avatar: string) {
+    return prisma.usuario.update({
+      where: { id },
+      data: { avatarUrl: avatar },
+      select: { id: true, avatarUrl: true },
+    });
+  },
+
+  /** Quita la foto de perfil. */
+  async removeAvatar(id: string) {
+    return prisma.usuario.update({
+      where: { id },
+      data: { avatarUrl: null },
+      select: { id: true, avatarUrl: true },
+    });
+  },
+
   /**
    * Crea un usuario ALUMNO + su perfil en la tabla alumnos.
    * Devuelve el usuario, el alumno y la contraseña generada (mostrar una sola vez al admin).

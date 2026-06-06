@@ -8,6 +8,16 @@ export const updateUsuarioSchema = z.object({
   activo: z.boolean().optional(),
 });
 
+// Foto de perfil: data URL de imagen ya redimensionada en el cliente.
+export const updateAvatarSchema = z.object({
+  avatar: z
+    .string()
+    .regex(/^data:image\/(png|jpe?g|webp|gif);base64,/, 'Formato de imagen inválido')
+    .max(900_000, 'La imagen es demasiado grande'),
+});
+
+export type UpdateAvatarInput = z.infer<typeof updateAvatarSchema>;
+
 export const listUsuariosQuerySchema = z.object({
   rol: z.nativeEnum(RolUsuario).optional(),
   activo: z.coerce.boolean().optional(),

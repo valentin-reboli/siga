@@ -85,6 +85,8 @@ model Usuario {
   rol           RolUsuario       @default(ALUMNO)
   activo        Boolean          @default(true)
   ultimoLogin   DateTime?
+  // Foto de perfil del usuario, guardada como data URL (imagen redimensionada).
+  avatarUrl     String?
   creadoEn      DateTime         @default(now())
   actualizadoEn DateTime         @updatedAt
 

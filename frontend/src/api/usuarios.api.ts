@@ -40,4 +40,15 @@ export const usuariosApi = {
 
   getMaterias: (docenteId: string) =>
     apiClient.get(`/usuarios/${docenteId}/materias`).then((r) => r.data),
+
+  // Foto de perfil del usuario autenticado.
+  updateAvatar: (avatar: string) =>
+    apiClient
+      .put<{ id: string; avatarUrl: string | null }>('/usuarios/me/avatar', { avatar })
+      .then((r) => r.data),
+
+  removeAvatar: () =>
+    apiClient
+      .delete<{ id: string; avatarUrl: string | null }>('/usuarios/me/avatar')
+      .then((r) => r.data),
 };

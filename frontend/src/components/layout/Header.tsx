@@ -42,9 +42,17 @@ export function Header() {
 
       {/* Avatar + info */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-navy-900 text-white flex items-center justify-center text-xs font-semibold">
-          {initials}
-        </div>
+        {usuario.avatarUrl ? (
+          <img
+            src={usuario.avatarUrl}
+            alt="Foto de perfil"
+            className="w-9 h-9 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-navy-900 text-white flex items-center justify-center text-xs font-semibold">
+            {initials}
+          </div>
+        )}
         <div className="hidden md:block">
           <p className="text-sm font-semibold text-slate-900 leading-tight">
             {usuario.nombre} {usuario.apellido}

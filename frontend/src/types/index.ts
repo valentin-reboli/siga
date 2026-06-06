@@ -48,6 +48,7 @@ export interface Usuario {
   rol: RolUsuario;
   activo?: boolean;
   ultimoLogin?: string | null;
+  avatarUrl?: string | null;
   alumno?: { id: string; legajo: string; carrera: string; estado: EstadoAlumno } | null;
 }
 

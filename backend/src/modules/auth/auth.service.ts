@@ -86,6 +86,7 @@ export const authService = {
         apellido: true,
         rol: true,
         ultimoLogin: true,
+        avatarUrl: true,
         alumno: {
           select: {
             id: true,

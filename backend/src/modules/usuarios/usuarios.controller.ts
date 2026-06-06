@@ -20,6 +20,21 @@ export const usuariosController = {
     try { res.json(await usuariosService.deactivate(req.params.id)); } catch (err) { next(err); }
   },
 
+  // Foto de perfil del propio usuario autenticado.
+  async updateAvatar(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) throw HttpError.unauthorized();
+      res.json(await usuariosService.updateAvatar(req.user.sub, req.body.avatar));
+    } catch (err) { next(err); }
+  },
+
+  async removeAvatar(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) throw HttpError.unauthorized();
+      res.json(await usuariosService.removeAvatar(req.user.sub));
+    } catch (err) { next(err); }
+  },
+
   async createAlumno(req: Request, res: Response, next: NextFunction) {
     try { res.status(201).json(await usuariosService.createAlumno(req.body)); } catch (err) { next(err); }
   },

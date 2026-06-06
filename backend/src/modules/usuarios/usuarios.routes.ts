@@ -8,10 +8,15 @@ import {
   updateUsuarioSchema,
   createAlumnoSchema,
   createStaffSchema,
+  updateAvatarSchema,
 } from './usuarios.schemas';
 
 const router = Router();
 router.use(authenticate);
+
+// Foto de perfil del propio usuario (cualquier rol autenticado).
+router.put('/me/avatar', validate(updateAvatarSchema), usuariosController.updateAvatar);
+router.delete('/me/avatar', usuariosController.removeAvatar);
 
 // Listar y ver usuarios
 router.get('/', requirePermission(PERMISSIONS.USERS_VIEW), validate(listUsuariosQuerySchema, 'query'), usuariosController.list);
