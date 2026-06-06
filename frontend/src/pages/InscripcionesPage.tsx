@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, CheckCircle2, XCircle, Clock3, Pencil, Search, Check, BookOpen, ClipboardList } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, XCircle, Clock3, Pencil, Search, Check, BookOpen, ClipboardList, Eye, EyeOff } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { alumnosApi } from '../api/alumnos.api';
@@ -396,6 +396,7 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
   const [materiaId, setMateriaId] = useState('');
   const [tipo, setTipo] = useState<'CURSADA' | 'MESA_EXAMEN'>('CURSADA');
   const [clave, setClave] = useState('');
+  const [showClave, setShowClave] = useState(false);
   const [q, setQ] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -569,14 +570,24 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
             <label className="form-label">
               Clave de la materia{seleccionada ? ` · ${seleccionada.nombre}` : ''}
             </label>
-            <input
-              type="password"
-              value={clave}
-              onChange={(e) => setClave(e.target.value)}
-              placeholder="La que te dio el docente"
-              className="form-input"
-              autoComplete="off"
-            />
+            <div className="relative">
+              <input
+                type={showClave ? 'text' : 'password'}
+                value={clave}
+                onChange={(e) => setClave(e.target.value)}
+                placeholder="La que te dio el docente"
+                className="form-input pr-10"
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={() => setShowClave((v) => !v)}
+                aria-label={showClave ? 'Ocultar clave' : 'Mostrar clave'}
+                className="absolute inset-y-0 right-2 flex items-center px-1 text-slate-400 hover:text-slate-600"
+              >
+                {showClave ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             <p className="mt-1 text-xs text-slate-400">
               El docente entrega esta clave al inicio del cursado para proteger la materia.
             </p>

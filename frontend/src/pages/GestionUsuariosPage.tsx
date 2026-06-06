@@ -11,6 +11,9 @@ import {
   ShieldAlert,
   History,
   LogIn,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
@@ -34,6 +37,14 @@ const CARRERAS = [
 ];
 
 type Tab = 'alumnos' | 'staff' | 'actividad';
+type SortKey = 'usuario' | 'rol' | 'estado' | 'ultimaConexion';
+
+const ROL_RANK: Record<RolUsuario, number> = {
+  SUPERADMIN: 0,
+  ADMINISTRACION: 1,
+  DOCENTE: 2,
+  ALUMNO: 3,
+};
 
 const ROL_TONE: Record<RolUsuario, 'success' | 'info' | 'navy' | 'danger'> = {
   SUPERADMIN: 'danger',
@@ -287,6 +298,71 @@ function TablaUsuarios({
   onToggle: (u: Usuario) => void;
   onReset: (u: Usuario) => void;
 }) {
+  const [sort, setSort] = useState<{ key: SortKey | null; dir: 'asc' | 'desc' }>({
+    key: null,
+    dir: 'desc',
+  });
+
+  function toggleSort(key: SortKey) {
+    setSort((prev) => {
+      if (prev.key !== key) return { key, dir: 'desc' }; // 1° clic: reciente/Z→A
+      if (prev.dir === 'desc') return { key, dir: 'asc' }; // 2° clic: viejo/A→Z
+      return { key: null, dir: 'desc' }; // 3° clic: orden por defecto
+    });
+  }
+
+  const sortedItems = useMemo(() => {
+    if (!sort.key) return items;
+    const arr = [...items];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (sort.key) {
+        case 'usuario':
+          cmp = `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`, 'es');
+          break;
+        case 'rol':
+          cmp = ROL_RANK[a.rol] - ROL_RANK[b.rol];
+          break;
+        case 'estado':
+          cmp = (a.activo !== false ? 1 : 0) - (b.activo !== false ? 1 : 0);
+          break;
+        case 'ultimaConexion':
+          cmp =
+            (a.ultimoLogin ? new Date(a.ultimoLogin).getTime() : 0) -
+            (b.ultimoLogin ? new Date(b.ultimoLogin).getTime() : 0);
+          break;
+      }
+      return sort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [items, sort]);
+
+  function renderTh(key: SortKey, label: string, align: 'left' | 'right' = 'left') {
+    const active = sort.key === key;
+    return (
+      <th className={`px-4 py-2.5 font-medium ${align === 'right' ? 'text-right' : 'text-left'}`}>
+        <button
+          type="button"
+          onClick={() => toggleSort(key)}
+          className={`inline-flex items-center gap-1 transition-colors hover:text-slate-700 ${
+            active ? 'text-slate-900' : ''
+          }`}
+        >
+          {label}
+          {active ? (
+            sort.dir === 'desc' ? (
+              <ChevronDown size={13} />
+            ) : (
+              <ChevronUp size={13} />
+            )
+          ) : (
+            <ChevronsUpDown size={13} className="text-slate-300" />
+          )}
+        </button>
+      </th>
+    );
+  }
+
   if (!items.length) {
     return (
       <p className="py-10 text-center text-sm italic text-slate-500">
@@ -300,15 +376,15 @@ function TablaUsuarios({
       <table className="w-full text-sm">
         <thead className="border-b border-slate-200 bg-slate-50/60 text-xs uppercase text-slate-500">
           <tr>
-            <th className="px-4 py-2.5 text-left font-medium">Usuario</th>
-            <th className="px-4 py-2.5 text-left font-medium">Rol</th>
-            <th className="px-4 py-2.5 text-left font-medium">Estado</th>
-            <th className="px-4 py-2.5 text-left font-medium">Última conexión</th>
+            {renderTh('usuario', 'Usuario')}
+            {renderTh('rol', 'Rol')}
+            {renderTh('estado', 'Estado')}
+            {renderTh('ultimaConexion', 'Última conexión')}
             {canManage && <th className="px-4 py-2.5 text-right font-medium">Acciones</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {items.map((u) => {
+          {sortedItems.map((u) => {
             const puedeGestionar = isSuperadmin || u.rol !== 'SUPERADMIN';
             const esYo = u.id === currentUserId;
             const activo = u.activo !== false;
