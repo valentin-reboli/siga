@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, GraduationCap, MessageSquare, ClipboardCheck } from 'lucide-react';
+import { ArrowRight, GraduationCap, MessageSquare, ClipboardCheck, BookOpen } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
 import { alumnosApi } from '../api/alumnos.api';
@@ -15,7 +15,8 @@ import { CampusHero } from './dashboard/CampusHero';
 import { AccesosRapidos } from './dashboard/AccesosRapidos';
 import { MateriaCard } from './dashboard/MateriaCard';
 import { PanelAcciones, type AccionRequerida } from './dashboard/PanelAcciones';
-import { AgendaForo } from './dashboard/AgendaForo';
+import { AgendaForo, ProximosExamenes, NovedadesForo } from './dashboard/AgendaForo';
+import { foroApi } from '../api/foro.api';
 import { modulesForRole } from '../config/modules';
 import { colorMateria } from '../utils/format';
 import type { RolUsuario } from '../types';
@@ -60,6 +61,10 @@ export function DashboardPage() {
   const misMaterias = useApi(
     () => (isDocente && usuario ? usuariosApi.getMaterias(usuario.id) : Promise.resolve(null)),
     [isDocente, usuario?.id],
+  );
+  const agenda = useApi(
+    () => (isAlumno ? foroApi.agenda() : Promise.resolve(null)),
+    [isAlumno],
   );
 
   const cursadas = useMemo(
@@ -258,32 +263,44 @@ export function DashboardPage() {
         ]}
       />
 
-      <AccesosRapidos modules={modules} />
+      {/* Acciones requeridas: lo primero que el alumno debe resolver */}
+      {acciones.length > 0 && (
+        <div className="mb-6">
+          <PanelAcciones acciones={acciones} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_22rem]">
+        {/* Columna principal: materias (uso diario) + novedades */}
         <div className="space-y-6">
           <Card>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">Mi cursada</h3>
+                <h3 className="text-base font-semibold text-slate-900">Mis materias</h3>
                 <p className="text-xs text-slate-500">
                   {cursadas.length}{' '}
                   {cursadas.length === 1 ? 'materia inscripta' : 'materias inscriptas'} ·{' '}
-                  {new Date().getMonth() < 6 ? '1°' : '2°'} cuatr. {year}
+                  {new Date().getMonth() < 6 ? '1°' : '2°'} cuatr. {year} · entrá al foro de cada una
                 </p>
               </div>
-              <Link to="/legajo" className="btn-ghost text-sm">
-                Ver legajo <ArrowRight size={14} />
+              <Link to="/inscripciones" className="btn-ghost text-sm">
+                Inscribirme <ArrowRight size={14} />
               </Link>
             </div>
 
             {cursadas.length === 0 ? (
-              <p className="text-sm italic text-slate-500">
-                No tenés materias inscriptas este cuatrimestre.{' '}
-                <Link to="/inscripciones" className="not-italic text-navy-700 hover:underline">
-                  Inscribite ahora →
+              <div className="rounded-xl border border-dashed border-slate-200 py-10 text-center">
+                <BookOpen size={28} className="mx-auto mb-2 text-slate-300" />
+                <p className="text-sm text-slate-500">
+                  No tenés materias inscriptas este cuatrimestre.
+                </p>
+                <Link
+                  to="/inscripciones"
+                  className="btn-primary mt-3 inline-flex text-sm"
+                >
+                  Inscribirme a una materia
                 </Link>
-              </p>
+              </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {cursadas.map((i) => (
@@ -298,19 +315,41 @@ export function DashboardPage() {
             )}
           </Card>
 
-          <Card>
-            <h3 className="text-base font-semibold text-slate-900">Próximos finales</h3>
-            <p className="mb-4 text-xs text-slate-500">
-              Mesas de examen disponibles e inscripciones activas
-            </p>
-            <ListaMesas />
-          </Card>
+          {agenda.loading ? (
+            <Card>
+              <Spinner className="mx-auto" />
+            </Card>
+          ) : (
+            <NovedadesForo novedades={agenda.data?.novedades ?? []} />
+          )}
         </div>
 
+        {/* Columna lateral: lo urgente / con fecha */}
         <aside className="space-y-6">
-          <PanelAcciones acciones={acciones} />
-          <AgendaForo />
+          {agenda.loading ? (
+            <Card>
+              <Spinner className="mx-auto" />
+            </Card>
+          ) : (
+            <ProximosExamenes examenes={agenda.data?.examenes ?? []} />
+          )}
+
+          <Card>
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-slate-900">Próximos finales</h3>
+              <Link to="/inscripciones" className="btn-ghost text-xs">
+                Anotarme
+              </Link>
+            </div>
+            <p className="mb-4 text-xs text-slate-500">Mesas de examen e inscripciones activas</p>
+            <ListaMesas />
+          </Card>
         </aside>
+      </div>
+
+      {/* Navegación secundaria */}
+      <div className="mt-8">
+        <AccesosRapidos modules={modules} />
       </div>
     </div>
   );
