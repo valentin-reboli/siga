@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, CheckCircle2, XCircle, Clock3, Pencil } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, XCircle, Clock3, Pencil, Search, Check, BookOpen, ClipboardList } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { alumnosApi } from '../api/alumnos.api';
@@ -10,10 +10,11 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Spinner, FullPageLoader } from '../components/ui/Spinner';
 import { ErrorAlert } from '../components/ui/ErrorAlert';
+import { Modal } from '../components/ui/Modal';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { extractErrorMessage } from '../api/client';
-import { formatDate } from '../utils/format';
-import type { EstadoCursada, EstadoInscripcion, Inscripcion } from '../types';
+import { formatDate, colorMateria } from '../utils/format';
+import type { EstadoCursada, EstadoInscripcion, Inscripcion, Materia } from '../types';
 
 export function InscripcionesPage() {
   const { usuario } = useAuth();
@@ -395,10 +396,30 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
   const [materiaId, setMateriaId] = useState('');
   const [tipo, setTipo] = useState<'CURSADA' | 'MESA_EXAMEN'>('CURSADA');
   const [clave, setClave] = useState('');
+  const [q, setQ] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const opciones = useMemo(() => materias.data?.items ?? [], [materias.data]);
+  const seleccionada = useMemo(
+    () => opciones.find((m) => m.id === materiaId) ?? null,
+    [opciones, materiaId],
+  );
+
+  // Filtra por código/nombre y agrupa por año.
+  const grupos = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    const filtradas = opciones.filter(
+      (m) => !term || m.nombre.toLowerCase().includes(term) || m.codigo.toLowerCase().includes(term),
+    );
+    const porAnio = new Map<number, Materia[]>();
+    for (const m of filtradas) {
+      const arr = porAnio.get(m.anio) ?? [];
+      arr.push(m);
+      porAnio.set(m.anio, arr);
+    }
+    return [...porAnio.entries()].sort((a, b) => a[0] - b[0]);
+  }, [opciones, q]);
 
   async function handleSubmit() {
     setError(null);
@@ -425,68 +446,147 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h3 className="font-serif text-xl font-semibold text-navy-900">Nueva inscripción</h3>
-        <p className="text-sm text-slate-500 mb-4">
-          Las correlatividades y cupos se verifican automáticamente.
-        </p>
-        {error && <div className="mb-3"><ErrorAlert message={error} /></div>}
-        <div className="space-y-3">
-          <div>
-            <label className="form-label">Tipo</label>
-            <select
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value as 'CURSADA' | 'MESA_EXAMEN')}
-              className="form-input"
-            >
-              <option value="CURSADA">Cursada</option>
-              <option value="MESA_EXAMEN">Mesa de examen</option>
-            </select>
-          </div>
-          <div>
-            <label className="form-label">Materia</label>
-            {materias.loading ? (
-              <Spinner />
-            ) : (
-              <select
-                value={materiaId}
-                onChange={(e) => setMateriaId(e.target.value)}
-                className="form-input"
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      title="Inscribirme a una materia"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting || !materiaId}
+            leftIcon={submitting ? <Spinner size={16} /> : undefined}
+          >
+            Inscribirme
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {error && <ErrorAlert message={error} />}
+
+        {/* Tipo de inscripción */}
+        <div>
+          <label className="form-label">Tipo de inscripción</label>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { val: 'CURSADA', label: 'Cursada', Icon: BookOpen },
+              { val: 'MESA_EXAMEN', label: 'Mesa de examen', Icon: ClipboardList },
+            ] as const).map(({ val, label, Icon }) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setTipo(val)}
+                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                  tipo === val
+                    ? 'border-navy-600 bg-navy-50 text-navy-900'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
               >
-                <option value="">Seleccioná una materia…</option>
-                {opciones.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.codigo} — {m.nombre} · {m.anio}° año
-                  </option>
-                ))}
-              </select>
-            )}
+                <Icon size={16} /> {label}
+              </button>
+            ))}
           </div>
-          {tipo === 'CURSADA' && (
-            <div>
-              <label className="form-label">Clave de la materia</label>
-              <input
-                type="password"
-                value={clave}
-                onChange={(e) => setClave(e.target.value)}
-                placeholder="La que te dio el docente"
-                className="form-input"
-                autoComplete="off"
-              />
-              <p className="mt-1 text-xs text-slate-400">
-                El docente entrega esta clave al inicio del cursado para proteger la materia.
-              </p>
+        </div>
+
+        {/* Selector de materia: buscable y agrupado por año */}
+        <div>
+          <label className="form-label">Materia</label>
+          <div className="relative mb-2">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar por nombre o código…"
+              className="form-input pl-9"
+            />
+          </div>
+
+          {materias.loading ? (
+            <div className="py-8 text-center">
+              <Spinner className="mx-auto" />
+            </div>
+          ) : grupos.length === 0 ? (
+            <p className="rounded-lg border border-slate-200 px-3 py-6 text-center text-sm text-slate-500">
+              No se encontraron materias{q ? ` para “${q.trim()}”` : ''}.
+            </p>
+          ) : (
+            <div className="max-h-72 space-y-3 overflow-y-auto rounded-lg border border-slate-200 p-2">
+              {grupos.map(([anio, items]) => (
+                <div key={anio}>
+                  <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    {anio}° año
+                  </p>
+                  <div className="space-y-1">
+                    {items.map((m) => {
+                      const c = colorMateria(m.codigo);
+                      const sel = m.id === materiaId;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setMateriaId(m.id)}
+                          className={`flex w-full items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition-colors ${
+                            sel
+                              ? 'border-navy-600 bg-navy-50'
+                              : 'border-transparent hover:bg-slate-50'
+                          }`}
+                        >
+                          <span
+                            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-md text-xs font-semibold"
+                            style={{ backgroundColor: c.bg, color: c.text }}
+                          >
+                            {m.codigo.slice(-3)}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-slate-800">
+                              {m.nombre}
+                            </span>
+                            <span className="block truncate text-xs text-slate-400">
+                              {m.codigo} ·{' '}
+                              {m.cuatrimestre === 0 ? 'Anual' : `${m.cuatrimestre}° cuatr.`}
+                            </span>
+                          </span>
+                          {sel && <Check size={16} className="shrink-0 text-navy-700" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2 mt-6">
-          <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <Spinner size={16} className="text-white" /> : 'Inscribirme'}
-          </Button>
-        </div>
+
+        {/* Clave de la materia (sólo cursada) */}
+        {tipo === 'CURSADA' && (
+          <div>
+            <label className="form-label">
+              Clave de la materia{seleccionada ? ` · ${seleccionada.nombre}` : ''}
+            </label>
+            <input
+              type="password"
+              value={clave}
+              onChange={(e) => setClave(e.target.value)}
+              placeholder="La que te dio el docente"
+              className="form-input"
+              autoComplete="off"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              El docente entrega esta clave al inicio del cursado para proteger la materia.
+            </p>
+          </div>
+        )}
+
+        <p className="text-xs text-slate-400">
+          Las correlatividades y los cupos se verifican automáticamente al inscribirte.
+        </p>
       </div>
-    </div>
+    </Modal>
   );
 }
