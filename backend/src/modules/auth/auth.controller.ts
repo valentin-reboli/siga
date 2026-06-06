@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { HttpError } from '../../utils/httpError';
+import { registrarAuditoria, AUDIT } from '../../utils/audit';
 
 export const authController = {
   async register(req: Request, res: Response, next: NextFunction) {
@@ -15,6 +16,15 @@ export const authController = {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await authService.login(req.body);
+      await registrarAuditoria({
+        accion: AUDIT.LOGIN,
+        actorId: result.usuario.id,
+        actorEmail: result.usuario.email,
+        targetId: result.usuario.id,
+        targetNombre: `${result.usuario.nombre} ${result.usuario.apellido}`,
+        descripcion: 'Inició sesión',
+        ip: req.ip,
+      });
       res.json(result);
     } catch (err) {
       next(err);

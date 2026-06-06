@@ -16,6 +16,22 @@ export function formatDate(iso?: string | Date | null): string {
   return d.toLocaleDateString('es-AR');
 }
 
+/** Tiempo relativo legible: "Recién", "hace 5 min", "hace 3 h", "hace 2 d". */
+export function tiempoRelativo(iso?: string | Date | null): string {
+  if (!iso) return 'Nunca';
+  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  if (isNaN(d.getTime())) return '—';
+  const diffMs = Date.now() - d.getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'Recién';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const dias = Math.floor(h / 24);
+  if (dias < 30) return `hace ${dias} d`;
+  return d.toLocaleDateString('es-AR');
+}
+
 /** Saludo según la hora del día. */
 export function saludoHorario(hora = new Date().getHours()): string {
   if (hora < 12) return 'Buen día';

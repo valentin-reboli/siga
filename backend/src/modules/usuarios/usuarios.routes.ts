@@ -26,9 +26,13 @@ router.get('/:id', requirePermission(PERMISSIONS.USERS_VIEW), usuariosController
 router.post('/alumnos', requirePermission(PERMISSIONS.USERS_CREATE_ALUMNO), validate(createAlumnoSchema), usuariosController.createAlumno);
 router.post('/staff', requirePermission(PERMISSIONS.USERS_CREATE_STAFF), validate(createStaffSchema), usuariosController.createStaff);
 
-// Editar / desactivar (suspender) — solo SUPERADMIN
+// Editar / desactivar (suspender) — SUPERADMIN y ADMINISTRACION (con guards).
 router.patch('/:id', requirePermission(PERMISSIONS.USERS_UPDATE), validate(updateUsuarioSchema), usuariosController.update);
 router.delete('/:id', requirePermission(PERMISSIONS.USERS_UPDATE), usuariosController.deactivate);
+
+// Reactivar y restablecer contraseña.
+router.post('/:id/reactivar', requirePermission(PERMISSIONS.USERS_UPDATE), usuariosController.reactivate);
+router.post('/:id/reset-password', requirePermission(PERMISSIONS.USERS_RESET_PASSWORD), usuariosController.resetPassword);
 
 // Materias de un docente. La autorización (propio o staff) se resuelve en el
 // controller para que un docente pueda ver SUS propias asignaciones.

@@ -252,3 +252,19 @@ export interface EventoCalendario {
   materia: MateriaMini | null;
   detalle?: string;
 }
+
+// =====================================================
+// Auditoría
+// =====================================================
+
+export interface AuditLog {
+  id: string;
+  accion: string;
+  actorId: string | null;
+  actorEmail: string | null;
+  targetId: string | null;
+  targetNombre: string | null;
+  descripcion: string;
+  ip: string | null;
+  creadoEn: string;
+}

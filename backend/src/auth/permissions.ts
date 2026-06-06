@@ -25,7 +25,11 @@ export const PERMISSIONS = {
   USERS_CREATE_ALUMNO: 'users:create_alumno',
   USERS_CREATE_STAFF: 'users:create_staff',
   USERS_UPDATE: 'users:update',
+  USERS_RESET_PASSWORD: 'users:reset_password',
   USERS_ASSIGN_MATERIA: 'users:assign_materia',
+
+  // Auditoría: ver el registro de actividad sobre usuarios.
+  AUDIT_VIEW: 'audit:view',
 
   // Alumnos (perfil académico)
   STUDENTS_VIEW: 'students:view',
@@ -60,7 +64,11 @@ const ROLE_PERMISSIONS: Record<RolUsuario, Permission[]> = {
   [RolUsuario.ADMINISTRACION]: [
     PERMISSIONS.USERS_VIEW,
     PERMISSIONS.USERS_CREATE_ALUMNO,
+    PERMISSIONS.USERS_CREATE_STAFF,
+    PERMISSIONS.USERS_UPDATE,
+    PERMISSIONS.USERS_RESET_PASSWORD,
     PERMISSIONS.USERS_ASSIGN_MATERIA,
+    PERMISSIONS.AUDIT_VIEW,
     PERMISSIONS.STUDENTS_VIEW,
     PERMISSIONS.STUDENTS_CREATE,
     PERMISSIONS.STUDENTS_UPDATE,

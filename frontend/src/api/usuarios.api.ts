@@ -29,8 +29,21 @@ export const usuariosApi = {
   createStaff: (data: CreateStaffPayload) =>
     apiClient.post<CreatedUserResult>('/usuarios/staff', data).then((r) => r.data),
 
+  update: (
+    id: string,
+    data: { nombre?: string; apellido?: string; rol?: RolUsuario; activo?: boolean },
+  ) => apiClient.patch<Usuario>(`/usuarios/${id}`, data).then((r) => r.data),
+
   deactivate: (id: string) =>
     apiClient.delete<Usuario>(`/usuarios/${id}`).then((r) => r.data),
+
+  reactivate: (id: string) =>
+    apiClient.post<Usuario>(`/usuarios/${id}/reactivar`).then((r) => r.data),
+
+  resetPassword: (id: string) =>
+    apiClient
+      .post<{ passwordTemporal: string }>(`/usuarios/${id}/reset-password`)
+      .then((r) => r.data),
 
   assignMateria: (docenteId: string, materiaId: string) =>
     apiClient.post(`/usuarios/${docenteId}/materias`, { materiaId }).then((r) => r.data),

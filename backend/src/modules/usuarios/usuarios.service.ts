@@ -57,6 +57,24 @@ export const usuariosService = {
     return prisma.usuario.update({ where: { id }, data: { activo: false }, select: usuarioSelect });
   },
 
+  /** Reactiva un usuario suspendido. */
+  async reactivate(id: string) {
+    return prisma.usuario.update({ where: { id }, data: { activo: true }, select: usuarioSelect });
+  },
+
+  /** Restablece la contraseña: genera una nueva temporal y devuelve el texto plano. */
+  async resetPassword(id: string) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id },
+      select: { nombre: true, apellido: true },
+    });
+    if (!usuario) throw HttpError.notFound('Usuario no encontrado');
+    const passwordPlain = generatePassword(usuario.nombre, usuario.apellido);
+    const passwordHash = await hashPassword(passwordPlain);
+    await prisma.usuario.update({ where: { id }, data: { passwordHash } });
+    return { passwordTemporal: passwordPlain };
+  },
+
   /** Actualiza la foto de perfil del propio usuario (data URL). */
   async updateAvatar(id: string, avatar: string) {
     return prisma.usuario.update({
