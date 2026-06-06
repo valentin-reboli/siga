@@ -236,3 +236,18 @@ export interface ForoAgenda {
   examenes: AgendaExamen[];
   novedades: AgendaNovedad[];
 }
+
+// =====================================================
+// Calendario académico
+// =====================================================
+
+export type TipoEvento = 'EXAMEN' | 'MESA';
+
+export interface EventoCalendario {
+  id: string;
+  tipo: TipoEvento;
+  titulo: string;
+  fecha: string; // ISO
+  materia: MateriaMini | null;
+  detalle?: string;
+}

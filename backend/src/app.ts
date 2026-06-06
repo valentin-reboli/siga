@@ -11,6 +11,7 @@ import { materiasRoutes } from './modules/materias/materias.routes';
 import { inscripcionesRoutes } from './modules/inscripciones/inscripciones.routes';
 import { constanciasRoutes } from './modules/constancias/constancias.routes';
 import { foroRoutes } from './modules/foro/foro.routes';
+import { calendarioRoutes } from './modules/calendario/calendario.routes';
 
 export function createApp() {
   const app = express();
@@ -37,6 +38,7 @@ export function createApp() {
   app.use('/api/inscripciones', inscripcionesRoutes);
   app.use('/api/constancias', constanciasRoutes);
   app.use('/api/foro', foroRoutes);
+  app.use('/api/calendario', calendarioRoutes);
 
   // 404
   app.use((_req: Request, res: Response) => {
