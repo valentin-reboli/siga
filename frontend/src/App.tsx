@@ -15,6 +15,7 @@ import { CalendarioPage } from './pages/CalendarioPage';
 import { PerfilPage } from './pages/PerfilPage';
 import { GestionUsuariosPage } from './pages/GestionUsuariosPage';
 import { MisMateriasPage } from './pages/MisMateriasPage';
+import { PlanEstudiosPage } from './pages/PlanEstudiosPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Rutas de la app.
@@ -41,6 +42,9 @@ export default function App() {
             <Route path="/calendario" element={<CalendarioPage />} />
             <Route path="/constancias" element={<ConstanciasPage />} />
             <Route path="/perfil" element={<PerfilPage />} />
+
+            {/* Plan de estudios: solo alumno */}
+            <Route path="/plan" element={<PlanEstudiosPage />} />
 
             {/* Gestión de usuarios: solo staff administrativo */}
             <Route

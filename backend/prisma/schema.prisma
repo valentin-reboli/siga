@@ -201,12 +201,33 @@ model Inscripcion {
   observaciones    String?
   actualizadoEn    DateTime          @updatedAt
 
+  notasParciales   NotaParcial[]
+
   @@unique([alumnoId, materiaId, tipo, cicloLectivo])
   @@index([alumnoId])
   @@index([materiaId])
   @@index([estado])
   @@index([cicloLectivo])
   @@map("inscripciones")
+}
+
+// Notas de parciales: cada inscripción de cursada puede tener múltiples parciales.
+// numero = 1, 2, 3... (número del parcial dentro del cuatrimestre)
+// tipo   = PARCIAL | RECUPERATORIO | INTEGRACION
+model NotaParcial {
+  id            String      @id @default(uuid())
+  inscripcionId String
+  inscripcion   Inscripcion @relation(fields: [inscripcionId], references: [id], onDelete: Cascade)
+  numero        Int
+  tipo          String      @default("PARCIAL")
+  nota          Float
+  fecha         DateTime    @default(now())
+  observaciones String?
+  creadoEn      DateTime    @default(now())
+
+  @@unique([inscripcionId, numero, tipo])
+  @@index([inscripcionId])
+  @@map("notas_parciales")
 }
 
 model Constancia {

@@ -7,6 +7,7 @@ import {
   User,
   UserCog,
   GraduationCap,
+  LayoutGrid,
   type LucideIcon,
 } from 'lucide-react';
 import type { RolUsuario } from '../types';
@@ -55,6 +56,16 @@ export const MODULES: AppModule[] = [
     roles: ['DOCENTE', 'SUPERADMIN'],
     accentBg: 'bg-teal-50',
     accentFg: 'text-teal-600',
+  },
+  {
+    to: '/plan',
+    navLabel: 'Plan de estudios',
+    title: 'Plan de estudios',
+    description: 'Tu mapa curricular con estado por materia.',
+    Icon: LayoutGrid,
+    roles: ['ALUMNO'],
+    accentBg: 'bg-indigo-50',
+    accentFg: 'text-indigo-600',
   },
   {
     to: '/legajo',

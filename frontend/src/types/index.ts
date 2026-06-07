@@ -89,6 +89,19 @@ export interface Correlatividad {
   requiere?: { id: string; codigo: string; nombre: string };
 }
 
+export type TipoParcial = 'PARCIAL' | 'RECUPERATORIO' | 'INTEGRACION';
+
+export interface NotaParcial {
+  id: string;
+  inscripcionId: string;
+  numero: number;
+  tipo: TipoParcial;
+  nota: number;
+  fecha: string;
+  observaciones?: string | null;
+  creadoEn: string;
+}
+
 export interface Inscripcion {
   id: string;
   alumnoId: string;
@@ -103,6 +116,7 @@ export interface Inscripcion {
   observaciones?: string | null;
   materia?: Pick<Materia, 'id' | 'codigo' | 'nombre' | 'cupoMaximo'>;
   alumno?: Pick<Alumno, 'id' | 'legajo' | 'nombre' | 'apellido'>;
+  notasParciales?: NotaParcial[];
 }
 
 export interface Constancia {

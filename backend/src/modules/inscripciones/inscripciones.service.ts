@@ -17,6 +17,7 @@ import {
 const inscripcionInclude = {
   alumno: { select: { id: true, legajo: true, nombre: true, apellido: true } },
   materia: { select: { id: true, codigo: true, nombre: true, cupoMaximo: true } },
+  notasParciales: { orderBy: [{ numero: 'asc' as const }, { tipo: 'asc' as const }] },
 } satisfies Prisma.InscripcionInclude;
 
 // Chequea correlatividades.
