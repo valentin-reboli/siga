@@ -554,13 +554,13 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
           </div>
 
           {materias.loading || (esMesa && legajo.loading) ? (
-            <div className=”py-8 text-center”>
-              <Spinner className=”mx-auto” />
+            <div className="py-8 text-center">
+              <Spinner className="mx-auto" />
             </div>
           ) : grupos.length === 0 ? (
-            <p className=”rounded-lg border border-slate-200 px-3 py-6 text-center text-sm text-slate-500”>
+            <p className="rounded-lg border border-slate-200 px-3 py-6 text-center text-sm text-slate-500">
               {q
-                ? `No se encontraron materias para “${q.trim()}”.`
+                ? `No se encontraron materias para "${q.trim()}".`
                 : esMesa
                   ? 'No tenés materias con estado Regular disponibles para mesa de examen.'
                   : 'No se encontraron materias.'}
