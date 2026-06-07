@@ -7,14 +7,21 @@ import {
   createAlumnoSchema,
   listAlumnosQuerySchema,
   updateAlumnoSchema,
+  updateMyContactSchema,
 } from './alumnos.schemas';
 import { RolUsuario } from '@prisma/client';
 
 const router = Router();
 router.use(authenticate);
 
-// El alumno consulta su propio perfil
+// El alumno consulta y actualiza sus propios datos de contacto
 router.get('/me', requireRole(RolUsuario.ALUMNO), alumnosController.myProfile);
+router.patch(
+  '/me',
+  requireRole(RolUsuario.ALUMNO),
+  validate(updateMyContactSchema),
+  alumnosController.updateMyContact,
+);
 
 router.get(
   '/',

@@ -12,4 +12,8 @@ export const alumnosApi = {
 
   getLegajo: (id: string) =>
     apiClient.get<Legajo>(`/alumnos/${id}/legajo`).then((r) => r.data),
+
+  /** El alumno actualiza sus propios datos de contacto. */
+  updateMe: (data: { telefono?: string; direccion?: string }) =>
+    apiClient.patch<Alumno>('/alumnos/me', data).then((r) => r.data),
 };

@@ -3,7 +3,7 @@ import { prisma } from '../../config/prisma';
 import { HttpError } from '../../utils/httpError';
 import { hashPassword } from '../../utils/password';
 import { generarLegajo } from '../../utils/legajo';
-import { CreateAlumnoInput, ListAlumnosQuery, UpdateAlumnoInput } from './alumnos.schemas';
+import { CreateAlumnoInput, ListAlumnosQuery, UpdateAlumnoInput, UpdateMyContactInput } from './alumnos.schemas';
 
 const alumnoInclude = {
   usuario: {
@@ -99,6 +99,17 @@ export const alumnosService = {
   async update(id: string, data: UpdateAlumnoInput) {
     return prisma.alumno.update({
       where: { id },
+      data,
+      include: alumnoInclude,
+    });
+  },
+
+  /** El alumno actualiza sus propios datos de contacto (telefono / dirección). */
+  async updateMyContact(usuarioId: string, data: UpdateMyContactInput) {
+    const alumno = await prisma.alumno.findUnique({ where: { usuarioId } });
+    if (!alumno) throw HttpError.notFound('Alumno no encontrado');
+    return prisma.alumno.update({
+      where: { id: alumno.id },
       data,
       include: alumnoInclude,
     });

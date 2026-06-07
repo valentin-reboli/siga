@@ -51,6 +51,16 @@ export const alumnosController = {
     }
   },
 
+  async updateMyContact(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) throw HttpError.unauthorized();
+      const result = await alumnosService.updateMyContact(req.user.sub, req.body);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   /**
    * Legajo del alumno. Un alumno solo puede ver el suyo;
    * staff puede ver cualquiera.

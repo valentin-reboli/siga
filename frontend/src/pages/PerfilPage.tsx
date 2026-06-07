@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
-import { Camera, Trash2, Loader2 } from 'lucide-react';
+import { Camera, Trash2, Loader2, Pencil, Check, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
 import { alumnosApi } from '../api/alumnos.api';
 import { usuariosApi } from '../api/usuarios.api';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { FullPageLoader } from '../components/ui/Spinner';
+import { Button } from '../components/ui/Button';
+import { FullPageLoader, Spinner } from '../components/ui/Spinner';
 import { ErrorAlert } from '../components/ui/ErrorAlert';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { extractErrorMessage } from '../api/client';
@@ -23,6 +24,13 @@ export function PerfilPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Estado para edición de contacto
+  const [editandoContacto, setEditandoContacto] = useState(false);
+  const [telefono, setTelefono] = useState('');
+  const [direccion, setDireccion] = useState('');
+  const [guardandoContacto, setGuardandoContacto] = useState(false);
+  const [errorContacto, setErrorContacto] = useState<string | null>(null);
 
   if (!usuario || alumno.loading) return <FullPageLoader />;
 
@@ -53,6 +61,27 @@ export function PerfilPage() {
       setError(extractErrorMessage(err, 'No se pudo quitar la foto'));
     } finally {
       setSubiendo(false);
+    }
+  }
+
+  function abrirEdicionContacto() {
+    setTelefono(alumno.data?.telefono ?? '');
+    setDireccion(alumno.data?.direccion ?? '');
+    setErrorContacto(null);
+    setEditandoContacto(true);
+  }
+
+  async function guardarContacto() {
+    setErrorContacto(null);
+    setGuardandoContacto(true);
+    try {
+      await alumnosApi.updateMe({ telefono: telefono || undefined, direccion: direccion || undefined });
+      await alumno.reload();
+      setEditandoContacto(false);
+    } catch (err) {
+      setErrorContacto(extractErrorMessage(err, 'No se pudo guardar'));
+    } finally {
+      setGuardandoContacto(false);
     }
   }
 
@@ -139,13 +168,79 @@ export function PerfilPage() {
               <Dato label="DNI" valor={alumno.data.dni} />
               <Dato label="Carrera" valor={alumno.data.carrera} />
               <Dato label="Año de ingreso" valor={String(alumno.data.anioIngreso)} />
-              <Dato label="Teléfono" valor={alumno.data.telefono ?? '—'} />
-              <Dato label="Dirección" valor={alumno.data.direccion ?? '—'} />
               <Dato label="Fecha de nacimiento" valor={formatDate(alumno.data.fechaNacimiento)} />
               <Dato label="Estado" valor={<Badge tone="success">{alumno.data.estado}</Badge>} />
             </>
           )}
         </dl>
+
+        {/* Datos de contacto editables (solo para ALUMNO) */}
+        {alumno.data && (
+          <div className="mt-6 border-t border-slate-100 pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-700">Datos de contacto</h3>
+              {!editandoContacto && (
+                <button
+                  type="button"
+                  onClick={abrirEdicionContacto}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-navy-700 hover:underline"
+                >
+                  <Pencil size={13} /> Editar
+                </button>
+              )}
+            </div>
+
+            {editandoContacto ? (
+              <div className="space-y-3">
+                {errorContacto && <ErrorAlert message={errorContacto} />}
+                <div>
+                  <label className="form-label">Teléfono</label>
+                  <input
+                    type="tel"
+                    value={telefono}
+                    onChange={(e) => setTelefono(e.target.value)}
+                    className="form-input"
+                    placeholder="Ej: +54 9 11 1234-5678"
+                    maxLength={20}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Dirección</label>
+                  <input
+                    type="text"
+                    value={direccion}
+                    onChange={(e) => setDireccion(e.target.value)}
+                    className="form-input"
+                    placeholder="Ej: Av. Corrientes 1234, CABA"
+                    maxLength={200}
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    onClick={guardarContacto}
+                    disabled={guardandoContacto}
+                    leftIcon={guardandoContacto ? <Spinner size={14} className="text-white" /> : <Check size={14} />}
+                  >
+                    Guardar
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setEditandoContacto(false)}
+                    disabled={guardandoContacto}
+                    leftIcon={<X size={14} />}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm md:grid-cols-2">
+                <Dato label="Teléfono" valor={alumno.data.telefono ?? '—'} />
+                <Dato label="Dirección" valor={alumno.data.direccion ?? '—'} />
+              </dl>
+            )}
+          </div>
+        )}
       </Card>
     </div>
   );

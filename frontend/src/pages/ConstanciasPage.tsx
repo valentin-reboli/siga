@@ -4,6 +4,7 @@ import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { alumnosApi } from '../api/alumnos.api';
 import { constanciasApi } from '../api/constancias.api';
+import { materiasApi } from '../api/materias.api';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -113,6 +114,7 @@ export function ConstanciasPage() {
       {modalAbierto && (
         <ModalNuevaConstancia
           alumnoId={alumno.data.id}
+          carrera={alumno.data.carrera}
           onClose={() => setModalAbierto(false)}
           onCreada={() => {
             setModalAbierto(false);
@@ -283,21 +285,50 @@ function EstadoConstanciaChip({ estado }: { estado: EstadoConstancia }) {
 
 interface ModalProps {
   alumnoId: string;
+  carrera: string;
   onClose: () => void;
   onCreada: () => void;
 }
 
-function ModalNuevaConstancia({ alumnoId, onClose, onCreada }: ModalProps) {
+function ModalNuevaConstancia({ alumnoId, carrera, onClose, onCreada }: ModalProps) {
   const [tipo, setTipo] = useState<TipoConstancia>('ALUMNO_REGULAR');
   const [motivo, setMotivo] = useState('');
+  const [materiaId, setMateriaId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const esProgramaMateria = tipo === 'PROGRAMA_MATERIA';
+
+  // Solo cargamos materias cuando se selecciona PROGRAMA_MATERIA
+  const materias = useApi(
+    () =>
+      esProgramaMateria
+        ? materiasApi.list({ carrera, activa: true, pageSize: 100 })
+        : Promise.resolve(null),
+    [esProgramaMateria, carrera],
+  );
+
+  function handleTipoChange(nuevoTipo: TipoConstancia) {
+    setTipo(nuevoTipo);
+    setMateriaId(''); // reset al cambiar de tipo
+  }
+
   async function handleSubmit() {
     setError(null);
+    if (esProgramaMateria && !materiaId) {
+      setError('Seleccioná la materia para la constancia de programa.');
+      return;
+    }
     setSubmitting(true);
     try {
-      await constanciasApi.create({ alumnoId, tipo, motivo: motivo || undefined });
+      // Si es programa de materia, incluimos el nombre en el motivo
+      let motivoFinal = motivo || undefined;
+      if (esProgramaMateria && materiaId) {
+        const mat = materias.data?.items.find((m) => m.id === materiaId);
+        const refMateria = mat ? `Programa de: ${mat.nombre} (${mat.codigo})` : '';
+        motivoFinal = motivo ? `${refMateria} — ${motivo}` : refMateria;
+      }
+      await constanciasApi.create({ alumnoId, tipo, motivo: motivoFinal });
       onCreada();
     } catch (err) {
       setError(extractErrorMessage(err, 'No se pudo crear la solicitud'));
@@ -319,7 +350,7 @@ function ModalNuevaConstancia({ alumnoId, onClose, onCreada }: ModalProps) {
             <label className="form-label">Tipo de constancia</label>
             <select
               value={tipo}
-              onChange={(e) => setTipo(e.target.value as TipoConstancia)}
+              onChange={(e) => handleTipoChange(e.target.value as TipoConstancia)}
               className="form-input"
             >
               {TIPOS.map((t) => (
@@ -327,6 +358,37 @@ function ModalNuevaConstancia({ alumnoId, onClose, onCreada }: ModalProps) {
               ))}
             </select>
           </div>
+
+          {/* Selector de materia: solo para PROGRAMA_MATERIA */}
+          {esProgramaMateria && (
+            <div>
+              <label className="form-label">Materia <span className="text-red-500">*</span></label>
+              {materias.loading ? (
+                <div className="flex items-center gap-2 py-2 text-sm text-slate-500">
+                  <Spinner size={14} /> Cargando materias…
+                </div>
+              ) : (
+                <select
+                  value={materiaId}
+                  onChange={(e) => setMateriaId(e.target.value)}
+                  className="form-input"
+                >
+                  <option value="">Seleccioná una materia…</option>
+                  {(materias.data?.items ?? [])
+                    .sort((a, b) => a.anio - b.anio || a.nombre.localeCompare(b.nombre))
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.anio}° año · {m.nombre} ({m.codigo})
+                      </option>
+                    ))}
+                </select>
+              )}
+              <p className="mt-1 text-xs text-slate-400">
+                Indicá a qué materia corresponde el programa solicitado.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="form-label">Motivo (opcional)</label>
             <textarea
@@ -340,7 +402,7 @@ function ModalNuevaConstancia({ alumnoId, onClose, onCreada }: ModalProps) {
         </div>
         <div className="flex justify-end gap-2 mt-6">
           <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
+          <Button onClick={handleSubmit} disabled={submitting || (esProgramaMateria && !materiaId)}>
             {submitting ? <Spinner size={16} className="text-white" /> : 'Solicitar'}
           </Button>
         </div>

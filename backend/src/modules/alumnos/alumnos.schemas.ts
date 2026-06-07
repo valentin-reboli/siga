@@ -23,6 +23,12 @@ export const updateAlumnoSchema = z.object({
   estado: z.nativeEnum(EstadoAlumno).optional(),
 });
 
+/** Schema reducido para que el propio alumno actualice sus datos de contacto. */
+export const updateMyContactSchema = z.object({
+  telefono: z.string().max(20).optional(),
+  direccion: z.string().max(200).optional(),
+});
+
 export const listAlumnosQuerySchema = z.object({
   estado: z.nativeEnum(EstadoAlumno).optional(),
   carrera: z.string().optional(),
@@ -33,4 +39,5 @@ export const listAlumnosQuerySchema = z.object({
 
 export type CreateAlumnoInput = z.infer<typeof createAlumnoSchema>;
 export type UpdateAlumnoInput = z.infer<typeof updateAlumnoSchema>;
+export type UpdateMyContactInput = z.infer<typeof updateMyContactSchema>;
 export type ListAlumnosQuery = z.infer<typeof listAlumnosQuerySchema>;

@@ -5,12 +5,12 @@ import { hashPassword, generatePassword } from '../../utils/password';
 import { generarLegajo } from '../../utils/legajo';
 import { ListUsuariosQuery, UpdateUsuarioInput, CreateAlumnoInput, CreateStaffInput } from './usuarios.schemas';
 
-/** Quita tildes/diacríticos, pasa a minúsculas y deja solo a–z. */
+/** Quita tildes/diacríticos, pasa a minúsculas y deja solo a-z. */
 function normalizeStr(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // elimina marcas diacríticas combinadas
+    .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z]/g, '');
 }
 
@@ -24,15 +24,9 @@ const NAME_PARTICLES = new Set([
 
 /**
  * Extrae la palabra más representativa de un fragmento de nombre:
- *  - omite partículas (de, del, la, los…)
- *  - normaliza a a–z
+ *  - omite partículas (de, del, la, los...)
+ *  - normaliza a a-z
  *  - trunca a maxLen caracteres para mantener emails legibles
- *
- * Ejemplos:
- *   "María de los Ángeles" → "maria"
- *   "de la Cruz"           → "cruz"
- *   "García López"         → "garcia"
- *   "van der Berg"         → "berg"
  */
 function extractEmailPart(namePart: string, maxLen = 12): string {
   const words = namePart.trim().split(/\s+/);
@@ -42,7 +36,6 @@ function extractEmailPart(namePart: string, maxLen = 12): string {
       return normalized.slice(0, maxLen);
     }
   }
-  // Fallback: todo junto, truncado (cubre casos como "Mc Intosh" → "mcintosh")
   const full = normalizeStr(words.join(''));
   return full.slice(0, maxLen) || 'usuario';
 }
@@ -50,20 +43,18 @@ function extractEmailPart(namePart: string, maxLen = 12): string {
 /**
  * Genera un email institucional único: nombre.apellidoNNN@iscr.edu.ar
  *
- * Maneja nombres compuestos, partículas, acentos y nombres largos.
- * Reintenta hasta 10 veces con distintos sufijos aleatorios (100–999);
+ * Reintenta hasta 10 veces con distintos sufijos aleatorios (100-999);
  * si todos colisionan usa un sufijo de timestamp como último recurso.
  */
 async function generateInstitutionalEmail(nombre: string, apellido: string): Promise<string> {
-  const n = extractEmailPart(nombre);   // e.g. "Juan Carlos"   → "juan"
-  const a = extractEmailPart(apellido); // e.g. "de la Cruz"    → "cruz"
+  const n = extractEmailPart(nombre);
+  const a = extractEmailPart(apellido);
   for (let attempt = 0; attempt < 10; attempt++) {
-    const rand = Math.floor(100 + Math.random() * 900); // 100–999
+    const rand = Math.floor(100 + Math.random() * 900);
     const email = `${n}.${a}${rand}@iscr.edu.ar`;
     const exists = await prisma.usuario.findUnique({ where: { email } });
     if (!exists) return email;
   }
-  // Extremadamente improbable, pero garantiza unicidad absoluta
   const ts = Date.now().toString().slice(-6);
   return `${n}.${a}${ts}@iscr.edu.ar`;
 }
@@ -120,12 +111,10 @@ export const usuariosService = {
     return prisma.usuario.update({ where: { id }, data: { activo: false }, select: usuarioSelect });
   },
 
-  /** Reactiva un usuario suspendido. */
   async reactivate(id: string) {
     return prisma.usuario.update({ where: { id }, data: { activo: true }, select: usuarioSelect });
   },
 
-  /** Restablece la contraseña: genera una nueva temporal y devuelve el texto plano. */
   async resetPassword(id: string) {
     const usuario = await prisma.usuario.findUnique({
       where: { id },
@@ -138,7 +127,6 @@ export const usuariosService = {
     return { passwordTemporal: passwordPlain };
   },
 
-  /** Actualiza la foto de perfil del propio usuario (data URL). */
   async updateAvatar(id: string, avatar: string) {
     return prisma.usuario.update({
       where: { id },
@@ -147,7 +135,6 @@ export const usuariosService = {
     });
   },
 
-  /** Quita la foto de perfil. */
   async removeAvatar(id: string) {
     return prisma.usuario.update({
       where: { id },
@@ -156,11 +143,6 @@ export const usuariosService = {
     });
   },
 
-  /**
-   * Crea un usuario ALUMNO + su perfil en la tabla alumnos.
-   * El email institucional se genera automáticamente: nombre.apellidoNNN@iscr.edu.ar
-   * Devuelve el usuario, el alumno y la contraseña generada (mostrar una sola vez al admin).
-   */
   async createAlumno(data: CreateAlumnoInput) {
     const existeDni = await prisma.alumno.findUnique({ where: { dni: data.dni } });
     if (existeDni) throw HttpError.conflict('Ya existe un alumno con ese DNI');
@@ -200,11 +182,6 @@ export const usuariosService = {
     return { alumno, passwordTemporal: passwordPlain };
   },
 
-  /**
-   * Crea un usuario de staff (DOCENTE o ADMINISTRACION).
-   * El email institucional se genera automáticamente: nombre.apellidoNNN@iscr.edu.ar
-   * Devuelve el usuario y la contraseña generada.
-   */
   async createStaff(data: CreateStaffInput) {
     const email = await generateInstitutionalEmail(data.nombre, data.apellido);
     const passwordPlain = generatePassword(data.nombre, data.apellido);
@@ -218,7 +195,6 @@ export const usuariosService = {
     return { usuario, passwordTemporal: passwordPlain };
   },
 
-  // Asignar/remover materia a un docente
   async assignMateria(docenteId: string, materiaId: string, cicloLectivo = 0) {
     const docente = await prisma.usuario.findUnique({ where: { id: docenteId } });
     if (!docente || docente.rol !== RolUsuario.DOCENTE) {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, CheckCircle2, XCircle, Clock3, Pencil, Search, Check, BookOpen, ClipboardList, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, XCircle, Clock3, Pencil, Search, Check, BookOpen, ClipboardList, Eye, EyeOff, Info } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { alumnosApi } from '../api/alumnos.api';
@@ -401,10 +401,49 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const opciones = useMemo(() => materias.data?.items ?? [], [materias.data]);
+  // Para mesa de examen: cargar el legajo y obtener los materiaIds con estado REGULAR
+  const esMesa = tipo === 'MESA_EXAMEN';
+  const legajo = useApi(
+    () => (esMesa ? alumnosApi.getLegajo(alumnoId) : Promise.resolve(null)),
+    [esMesa, alumnoId],
+  );
+
+  // Set de materiaIds donde el estado más reciente es REGULAR
+  const regularIds = useMemo(() => {
+    if (!esMesa || !legajo.data) return null; // null = sin restricción (no cargado aún)
+    const historial = legajo.data.historial as Array<{
+      materiaId: string;
+      estadoCursada: string | null;
+      cicloLectivo: number;
+      tipo: string;
+    }>;
+    // Solo cursadas (no mesas), agrupar por materia y quedarse con la más reciente
+    const porMateria = new Map<string, { ciclo: number; estado: string | null }>();
+    for (const h of historial) {
+      if (h.tipo !== 'CURSADA') continue;
+      const prev = porMateria.get(h.materiaId);
+      if (!prev || h.cicloLectivo > prev.ciclo) {
+        porMateria.set(h.materiaId, { ciclo: h.cicloLectivo, estado: h.estadoCursada });
+      }
+    }
+    const ids = new Set<string>();
+    for (const [id, { estado }] of porMateria) {
+      if (estado === 'REGULAR') ids.add(id);
+    }
+    return ids;
+  }, [esMesa, legajo.data]);
+
+  const todasOpciones = useMemo(() => materias.data?.items ?? [], [materias.data]);
+
+  // Cuando es mesa: solo materias con estado REGULAR. Cuando es cursada: todas.
+  const opciones = useMemo(() => {
+    if (!esMesa || regularIds === null) return todasOpciones;
+    return todasOpciones.filter((m) => regularIds.has(m.id));
+  }, [todasOpciones, esMesa, regularIds]);
+
   const seleccionada = useMemo(
-    () => opciones.find((m) => m.id === materiaId) ?? null,
-    [opciones, materiaId],
+    () => todasOpciones.find((m) => m.id === materiaId) ?? null,
+    [todasOpciones, materiaId],
   );
 
   // Filtra por código/nombre y agrupa por año.
@@ -481,7 +520,7 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
               <button
                 key={val}
                 type="button"
-                onClick={() => setTipo(val)}
+                onClick={() => { setTipo(val); setMateriaId(''); setQ(''); }}
                 className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
                   tipo === val
                     ? 'border-navy-600 bg-navy-50 text-navy-900'
@@ -492,6 +531,12 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
               </button>
             ))}
           </div>
+          {esMesa && (
+            <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-500">
+              <Info size={13} className="mt-0.5 shrink-0 text-sky-500" />
+              Solo se muestran las materias en las que tenés estado <strong>Regular</strong>.
+            </p>
+          )}
         </div>
 
         {/* Selector de materia: buscable y agrupado por año */}
@@ -508,13 +553,17 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
             />
           </div>
 
-          {materias.loading ? (
-            <div className="py-8 text-center">
-              <Spinner className="mx-auto" />
+          {materias.loading || (esMesa && legajo.loading) ? (
+            <div className=”py-8 text-center”>
+              <Spinner className=”mx-auto” />
             </div>
           ) : grupos.length === 0 ? (
-            <p className="rounded-lg border border-slate-200 px-3 py-6 text-center text-sm text-slate-500">
-              No se encontraron materias{q ? ` para “${q.trim()}”` : ''}.
+            <p className=”rounded-lg border border-slate-200 px-3 py-6 text-center text-sm text-slate-500”>
+              {q
+                ? `No se encontraron materias para “${q.trim()}”.`
+                : esMesa
+                  ? 'No tenés materias con estado Regular disponibles para mesa de examen.'
+                  : 'No se encontraron materias.'}
             </p>
           ) : (
             <div className="max-h-72 space-y-3 overflow-y-auto rounded-lg border border-slate-200 p-2">
