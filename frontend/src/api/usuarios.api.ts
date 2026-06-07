@@ -2,14 +2,14 @@ import { apiClient } from './client';
 import type { Paginated, RolUsuario, Usuario } from '../types';
 
 export interface CreateAlumnoPayload {
-  nombre: string; apellido: string; email: string;
+  nombre: string; apellido: string;
   dni: string; carrera: string;
   anioIngreso: number; fechaNacimiento: string;
   telefono?: string; direccion?: string;
 }
 
 export interface CreateStaffPayload {
-  nombre: string; apellido: string; email: string;
+  nombre: string; apellido: string;
   rol: 'DOCENTE' | 'ADMINISTRACION';
 }
 

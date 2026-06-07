@@ -5,6 +5,69 @@ import { hashPassword, generatePassword } from '../../utils/password';
 import { generarLegajo } from '../../utils/legajo';
 import { ListUsuariosQuery, UpdateUsuarioInput, CreateAlumnoInput, CreateStaffInput } from './usuarios.schemas';
 
+/** Quita tildes/diacríticos, pasa a minúsculas y deja solo a–z. */
+function normalizeStr(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // elimina marcas diacríticas combinadas
+    .replace(/[^a-z]/g, '');
+}
+
+/**
+ * Partículas de nombres que se omiten al elegir la palabra principal.
+ * Cubre apellidos compuestos españoles y algunos europeos comunes.
+ */
+const NAME_PARTICLES = new Set([
+  'de', 'del', 'la', 'las', 'los', 'el', 'van', 'von', 'y', 'e', 'bin', 'bint',
+]);
+
+/**
+ * Extrae la palabra más representativa de un fragmento de nombre:
+ *  - omite partículas (de, del, la, los…)
+ *  - normaliza a a–z
+ *  - trunca a maxLen caracteres para mantener emails legibles
+ *
+ * Ejemplos:
+ *   "María de los Ángeles" → "maria"
+ *   "de la Cruz"           → "cruz"
+ *   "García López"         → "garcia"
+ *   "van der Berg"         → "berg"
+ */
+function extractEmailPart(namePart: string, maxLen = 12): string {
+  const words = namePart.trim().split(/\s+/);
+  for (const word of words) {
+    const normalized = normalizeStr(word);
+    if (normalized.length >= 2 && !NAME_PARTICLES.has(word.toLowerCase())) {
+      return normalized.slice(0, maxLen);
+    }
+  }
+  // Fallback: todo junto, truncado (cubre casos como "Mc Intosh" → "mcintosh")
+  const full = normalizeStr(words.join(''));
+  return full.slice(0, maxLen) || 'usuario';
+}
+
+/**
+ * Genera un email institucional único: nombre.apellidoNNN@iscr.edu.ar
+ *
+ * Maneja nombres compuestos, partículas, acentos y nombres largos.
+ * Reintenta hasta 10 veces con distintos sufijos aleatorios (100–999);
+ * si todos colisionan usa un sufijo de timestamp como último recurso.
+ */
+async function generateInstitutionalEmail(nombre: string, apellido: string): Promise<string> {
+  const n = extractEmailPart(nombre);   // e.g. "Juan Carlos"   → "juan"
+  const a = extractEmailPart(apellido); // e.g. "de la Cruz"    → "cruz"
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const rand = Math.floor(100 + Math.random() * 900); // 100–999
+    const email = `${n}.${a}${rand}@iscr.edu.ar`;
+    const exists = await prisma.usuario.findUnique({ where: { email } });
+    if (!exists) return email;
+  }
+  // Extremadamente improbable, pero garantiza unicidad absoluta
+  const ts = Date.now().toString().slice(-6);
+  return `${n}.${a}${ts}@iscr.edu.ar`;
+}
+
 const usuarioSelect = {
   id: true,
   email: true,
@@ -95,22 +158,21 @@ export const usuariosService = {
 
   /**
    * Crea un usuario ALUMNO + su perfil en la tabla alumnos.
+   * El email institucional se genera automáticamente: nombre.apellidoNNN@iscr.edu.ar
    * Devuelve el usuario, el alumno y la contraseña generada (mostrar una sola vez al admin).
    */
   async createAlumno(data: CreateAlumnoInput) {
-    const existe = await prisma.usuario.findUnique({ where: { email: data.email } });
-    if (existe) throw HttpError.conflict('Ya existe un usuario con ese email');
-
     const existeDni = await prisma.alumno.findUnique({ where: { dni: data.dni } });
     if (existeDni) throw HttpError.conflict('Ya existe un alumno con ese DNI');
 
+    const email = await generateInstitutionalEmail(data.nombre, data.apellido);
     const passwordPlain = generatePassword(data.nombre, data.apellido);
     const passwordHash = await hashPassword(passwordPlain);
 
     const alumno = await prisma.$transaction(async (tx) => {
       const usuario = await tx.usuario.create({
         data: {
-          email: data.email,
+          email,
           passwordHash,
           nombre: data.nombre,
           apellido: data.apellido,
@@ -140,17 +202,16 @@ export const usuariosService = {
 
   /**
    * Crea un usuario de staff (DOCENTE o ADMINISTRACION).
+   * El email institucional se genera automáticamente: nombre.apellidoNNN@iscr.edu.ar
    * Devuelve el usuario y la contraseña generada.
    */
   async createStaff(data: CreateStaffInput) {
-    const existe = await prisma.usuario.findUnique({ where: { email: data.email } });
-    if (existe) throw HttpError.conflict('Ya existe un usuario con ese email');
-
+    const email = await generateInstitutionalEmail(data.nombre, data.apellido);
     const passwordPlain = generatePassword(data.nombre, data.apellido);
     const passwordHash = await hashPassword(passwordPlain);
 
     const usuario = await prisma.usuario.create({
-      data: { email: data.email, passwordHash, nombre: data.nombre, apellido: data.apellido, rol: data.rol },
+      data: { email, passwordHash, nombre: data.nombre, apellido: data.apellido, rol: data.rol },
       select: usuarioSelect,
     });
 

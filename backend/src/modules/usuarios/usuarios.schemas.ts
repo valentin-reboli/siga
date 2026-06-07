@@ -27,10 +27,10 @@ export const listUsuariosQuerySchema = z.object({
 });
 
 // Crear alumno — el admin/administrativo crea el usuario + perfil alumno
+// El email se genera automáticamente en el backend: nombre.apellidoNNN@iscr.edu.ar
 export const createAlumnoSchema = z.object({
   nombre: z.string().min(2),
   apellido: z.string().min(2),
-  email: z.string().email(),
   dni: z.string().min(7).max(10),
   // El legajo se genera automáticamente en el backend (convención AAAA-NNNN).
   carrera: z.string().min(3),
@@ -41,10 +41,10 @@ export const createAlumnoSchema = z.object({
 });
 
 // Crear staff (docente o administración). SUPERADMIN no se crea por este flujo.
+// El email se genera automáticamente en el backend: nombre.apellidoNNN@iscr.edu.ar
 export const createStaffSchema = z.object({
   nombre: z.string().min(2),
   apellido: z.string().min(2),
-  email: z.string().email(),
   rol: z.enum([RolUsuario.DOCENTE, RolUsuario.ADMINISTRACION]),
 });
 

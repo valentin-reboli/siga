@@ -705,15 +705,16 @@ function ModalCrearAlumno({ onClose, onCreado }: { onClose: () => void; onCreado
 
   async function handleSubmit() {
     setError(null);
-    const { nombre, apellido, email, dni, carrera, anioIngreso, fechaNacimiento } = form;
-    if (!nombre || !apellido || !email || !dni || !carrera || !anioIngreso || !fechaNacimiento) {
+    const { nombre, apellido, dni, carrera, anioIngreso, fechaNacimiento } = form;
+    if (!nombre || !apellido || !dni || !carrera || !anioIngreso || !fechaNacimiento) {
       setError('Completá todos los campos obligatorios');
       return;
     }
     setSubmitting(true);
     try {
       const result = await usuariosApi.createAlumno(form as CreateAlumnoPayload);
-      onCreado(email, result.passwordTemporal);
+      const emailGenerado = result.alumno?.usuario.email ?? '';
+      onCreado(emailGenerado, result.passwordTemporal);
     } catch (err) {
       setError(extractErrorMessage(err, 'No se pudo crear el alumno'));
     } finally {
@@ -725,7 +726,7 @@ function ModalCrearAlumno({ onClose, onCreado }: { onClose: () => void; onCreado
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/40 p-6">
       <div className="my-4 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <h3 className="mb-1 font-serif text-xl font-semibold text-navy-900">Nuevo alumno</h3>
-        <p className="mb-4 text-sm text-slate-500">Se generará una contraseña temporal automáticamente.</p>
+        <p className="mb-4 text-sm text-slate-500">El email institucional y la contraseña se generarán automáticamente.</p>
 
         {error && <div className="mb-3"><ErrorAlert message={error} /></div>}
 
@@ -737,10 +738,6 @@ function ModalCrearAlumno({ onClose, onCreado }: { onClose: () => void; onCreado
           <div>
             <label className="form-label">Apellido *</label>
             <Input value={form.apellido ?? ''} onChange={(e) => set('apellido', e.target.value)} placeholder="Pérez" />
-          </div>
-          <div className="col-span-2">
-            <label className="form-label">Email institucional *</label>
-            <Input type="email" value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} placeholder="jperez@iscr.edu.ar" />
           </div>
           <div>
             <label className="form-label">DNI *</label>
@@ -799,12 +796,13 @@ function ModalCrearStaff({ onClose, onCreado }: { onClose: () => void; onCreado:
 
   async function handleSubmit() {
     setError(null);
-    const { nombre, apellido, email, rol } = form;
-    if (!nombre || !apellido || !email || !rol) { setError('Completá todos los campos'); return; }
+    const { nombre, apellido, rol } = form;
+    if (!nombre || !apellido || !rol) { setError('Completá todos los campos'); return; }
     setSubmitting(true);
     try {
       const result = await usuariosApi.createStaff(form as CreateStaffPayload);
-      onCreado(email, result.passwordTemporal);
+      const emailGenerado = result.usuario?.email ?? '';
+      onCreado(emailGenerado, result.passwordTemporal);
     } catch (err) {
       setError(extractErrorMessage(err, 'No se pudo crear el usuario'));
     } finally {
@@ -816,7 +814,7 @@ function ModalCrearStaff({ onClose, onCreado }: { onClose: () => void; onCreado:
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-6">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
         <h3 className="mb-1 font-serif text-xl font-semibold text-navy-900">Nuevo usuario de staff</h3>
-        <p className="mb-4 text-sm text-slate-500">Se generará una contraseña temporal automáticamente.</p>
+        <p className="mb-4 text-sm text-slate-500">El email institucional y la contraseña se generarán automáticamente.</p>
 
         {error && <div className="mb-3"><ErrorAlert message={error} /></div>}
 
@@ -828,10 +826,6 @@ function ModalCrearStaff({ onClose, onCreado }: { onClose: () => void; onCreado:
           <div>
             <label className="form-label">Apellido *</label>
             <Input value={form.apellido ?? ''} onChange={(e) => set('apellido', e.target.value)} placeholder="Ramírez" />
-          </div>
-          <div>
-            <label className="form-label">Email *</label>
-            <Input type="email" value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} placeholder="lramirez@iscr.edu.ar" />
           </div>
           <div>
             <label className="form-label">Rol *</label>
