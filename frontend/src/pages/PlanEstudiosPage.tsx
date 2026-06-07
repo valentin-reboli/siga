@@ -158,13 +158,14 @@ export function PlanEstudiosPage() {
   const materias = useApi(
     () =>
       alumno.data
-        ? materiasApi.list({ carrera: alumno.data.carrera, pageSize: 200 })
+        ? materiasApi.list({ carrera: alumno.data.carrera, pageSize: 100 })
         : Promise.resolve(null),
     [alumno.data?.carrera],
   );
 
   if (alumno.loading || legajo.loading || materias.loading) return <FullPageLoader />;
   if (alumno.error) return <ErrorAlert message={alumno.error} />;
+  if (materias.error) return <ErrorAlert message={materias.error} />;
   if (!alumno.data) return null;
 
   return (
