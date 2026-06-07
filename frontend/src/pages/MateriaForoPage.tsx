@@ -751,4 +751,41 @@ function Comentarios({
                       </button>
                     )}
                   </div>
-          
+                  <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-600">{c.contenido}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {/* Caja de comentario: solo para quienes pueden publicar (docente/staff) */}
+      {pub.puedePublicar && (
+        <div className="mt-4 flex items-end gap-2">
+          <textarea
+            className="form-input min-h-[44px] resize-y"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Escribir un comentario…"
+            maxLength={5000}
+          />
+          <Button
+            onClick={enviar}
+            disabled={enviando || texto.trim().length === 0}
+            leftIcon={enviando ? <Spinner size={16} /> : <Send size={16} />}
+          >
+            Enviar
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Avatar({ autor }: { autor: AutorMini }) {
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy-100 text-xs font-semibold text-navy-900">
+      {getIniciales(autor.nombre, autor.apellido)}
+    </span>
+  );
+}
