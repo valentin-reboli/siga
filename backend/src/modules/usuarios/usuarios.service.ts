@@ -68,6 +68,7 @@ const usuarioSelect = {
   activo: true,
   ultimoLogin: true,
   creadoEn: true,
+  avatarUrl: true,
 } satisfies Prisma.UsuarioSelect;
 
 export const usuariosService = {
