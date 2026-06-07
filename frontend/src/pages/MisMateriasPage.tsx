@@ -78,7 +78,7 @@ export function MisMateriasPage() {
       <div className="mb-6">
         <h1 className="font-serif text-2xl font-semibold text-navy-900">Mis materias</h1>
         <p className="text-sm text-slate-500">
-          Cargá parciales y notas finales directamente en la tabla — sin modales, sin pasos extras.
+          Registro de notas parciales y finales de los alumnos inscriptos en cada materia.
         </p>
       </div>
 
@@ -121,7 +121,7 @@ function MateriaCard({
   const inscripciones = useApi(
     () =>
       abierta
-        ? inscripcionesApi.list({ materiaId: materia.id, tipo: 'CURSADA', pageSize: 200 })
+        ? inscripcionesApi.list({ materiaId: materia.id, tipo: 'CURSADA', pageSize: 100 })
         : Promise.resolve(null),
     [abierta, materia.id],
   );
