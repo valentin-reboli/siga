@@ -66,6 +66,13 @@ export function DashboardPage() {
     () => (isAlumno ? foroApi.agenda() : Promise.resolve(null)),
     [isAlumno],
   );
+  const misInscripciones = useApi(
+    () =>
+      isDocente
+        ? inscripcionesApi.list({ tipo: 'CURSADA', cicloLectivo: year, pageSize: 100 })
+        : Promise.resolve(null),
+    [isDocente],
+  );
 
   const cursadas = useMemo(
     () =>
@@ -73,6 +80,25 @@ export function DashboardPage() {
       [],
     [inscripciones.data],
   );
+
+  const statsPorMateria = useMemo(() => {
+    const map = new Map<
+      string,
+      { total: number; enCurso: number; regulares: number; aprobados: number; reprobados: number }
+    >();
+    for (const i of misInscripciones.data?.items ?? []) {
+      const mid = i.materiaId;
+      if (!map.has(mid))
+        map.set(mid, { total: 0, enCurso: 0, regulares: 0, aprobados: 0, reprobados: 0 });
+      const s = map.get(mid)!;
+      s.total++;
+      if (i.estadoCursada === 'EN_CURSO') s.enCurso++;
+      else if (i.estadoCursada === 'REGULAR') s.regulares++;
+      else if (i.estadoCursada === 'APROBADA') s.aprobados++;
+      else if (i.estadoCursada === 'REPROBADA') s.reprobados++;
+    }
+    return map;
+  }, [misInscripciones.data]);
 
   const acciones = useMemo<AccionRequerida[]>(() => {
     if (!isAlumno) return [];
@@ -107,85 +133,149 @@ export function DashboardPage() {
   if (isDocente) {
     if (misMaterias.loading) return <FullPageLoader />;
     const materias = (misMaterias.data ?? []) as DocenteMateriaItem[];
+    const inscLoading = misInscripciones.loading;
+    const totalAlumnos = [...statsPorMateria.values()].reduce((a, s) => a + s.total, 0);
+    const totalEnCurso = [...statsPorMateria.values()].reduce((a, s) => a + s.enCurso, 0);
 
     return (
-      <div className="mx-auto max-w-screen-2xl">
+      <div className="mx-auto max-w-screen-xl">
         <CampusHero
           nombre={usuario.nombre}
           rolLabel="Docente"
           subtitle={`Ciclo lectivo ${year}`}
-          stats={[{ label: 'Materias', value: materias.length }]}
+          stats={[
+            { label: 'Cátedras', value: materias.length },
+            { label: 'Alumnos', value: inscLoading ? '…' : totalAlumnos },
+            { label: 'En curso', value: inscLoading ? '…' : totalEnCurso },
+          ]}
         />
 
-        <AccesosRapidos modules={modules} />
-
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-700">Mis materias</h2>
-            <Link to="/mis-materias" className="btn-ghost text-sm">
-              Ver todo <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          {materias.length === 0 ? (
-            <Card>
-              <div className="py-12 text-center">
-                <GraduationCap size={40} className="mx-auto mb-3 text-slate-300" />
-                <p className="font-medium text-slate-700">Todavía no tenés materias asignadas</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  Contactá al administrador para que te asigne tus cátedras.
-                </p>
-              </div>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {materias.map((dm) => {
-                const c = colorMateria(dm.materia.codigo);
-                return (
-                  <Card key={dm.materiaId} className="flex flex-col">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
-                        style={{ backgroundColor: c.bg, color: c.text }}
-                      >
-                        {dm.materia.codigo.slice(0, 2)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-slate-900">{dm.materia.nombre}</p>
-                        <p className="text-xs text-slate-500">
-                          {dm.materia.codigo} · {dm.materia.anio}° año ·{' '}
-                          {dm.materia.cuatrimestre === 0
-                            ? 'Anual'
-                            : `${dm.materia.cuatrimestre}° cuatr.`}
-                        </p>
-                        <Badge tone="neutral" className="mt-2">
-                          {dm.materia.carrera.split(' ').slice(-1)[0]}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
-                      <Link
-                        to={`/materias/${dm.materia.id}`}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-navy-50 px-3 py-2 text-xs font-semibold text-navy-700 transition-colors hover:bg-navy-100"
-                      >
-                        <MessageSquare size={13} /> Foro
-                      </Link>
-                      <Link
-                        to="/mis-materias"
-                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100"
-                      >
-                        <ClipboardCheck size={13} /> Calificar
-                      </Link>
-                    </div>
-                  </Card>
-                );
-              })}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_22rem]">
+          {/* Columna principal: mis cátedras con alumnos */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-700">Mis cátedras</h2>
+              <Link to="/mis-materias" className="btn-ghost text-sm">
+                Calificaciones <ArrowRight size={14} />
+              </Link>
             </div>
-          )}
-        </section>
 
-        <div className="mt-6">
-          <AgendaForo />
+            {materias.length === 0 ? (
+              <Card>
+                <div className="py-12 text-center">
+                  <GraduationCap size={40} className="mx-auto mb-3 text-slate-300" />
+                  <p className="font-medium text-slate-700">Todavía no tenés materias asignadas</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Contactá al administrador para que te asigne tus cátedras.
+                  </p>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {materias.map((dm) => {
+                  const stats = statsPorMateria.get(dm.materia.id) ?? {
+                    total: 0, enCurso: 0, regulares: 0, aprobados: 0, reprobados: 0,
+                  };
+                  const calificados = stats.total - stats.enCurso;
+                  const pct = stats.total > 0 ? Math.round((calificados / stats.total) * 100) : 0;
+                  const c = colorMateria(dm.materia.codigo);
+
+                  return (
+                    <Card key={dm.materiaId}>
+                      <div className="flex items-start gap-4">
+                        <div
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
+                          style={{ backgroundColor: c.bg, color: c.text }}
+                        >
+                          {dm.materia.codigo.slice(0, 2)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold text-slate-900 leading-snug">
+                                {dm.materia.nombre}
+                              </p>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {dm.materia.codigo} · {dm.materia.anio}° año ·{" "}
+                                {dm.materia.cuatrimestre === 0 ? 'Anual' : `${dm.materia.cuatrimestre}° cuatr.`}
+                              </p>
+                            </div>
+                            <Badge tone="neutral" className="shrink-0">
+                              {dm.materia.carrera.split(' ').slice(-1)[0]}
+                            </Badge>
+                          </div>
+
+                          {inscLoading ? (
+                            <div className="mt-3 flex items-center gap-2">
+                              <Spinner size={12} />
+                              <span className="text-xs text-slate-400">Cargando alumnos…</span>
+                            </div>
+                          ) : stats.total === 0 ? (
+                            <p className="mt-2 text-xs text-slate-400 italic">Sin alumnos inscriptos</p>
+                          ) : (
+                            <div className="mt-3 space-y-2">
+                              <div className="flex items-center justify-between text-xs text-slate-500">
+                                <span>{calificados} de {stats.total} calificados</span>
+                                <span className="font-semibold">{pct}%</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-teal-500 transition-all"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {stats.enCurso > 0 && (
+                                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                    {stats.enCurso} en curso
+                                  </span>
+                                )}
+                                {stats.regulares > 0 && (
+                                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                                    {stats.regulares} regulares
+                                  </span>
+                                )}
+                                {stats.aprobados > 0 && (
+                                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                    {stats.aprobados} aprobados
+                                  </span>
+                                )}
+                                {stats.reprobados > 0 && (
+                                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                                    {stats.reprobados} reprobados
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
+                        <Link
+                          to={`/materias/${dm.materia.id}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-navy-50 px-3 py-1.5 text-xs font-semibold text-navy-700 transition-colors hover:bg-navy-100"
+                        >
+                          <MessageSquare size={12} /> Foro
+                        </Link>
+                        <Link
+                          to="/mis-materias"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-700 transition-colors hover:bg-teal-100"
+                        >
+                          <ClipboardCheck size={12} /> Calificar
+                        </Link>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Columna lateral: agenda del foro (próximos exámenes + novedades) */}
+          <aside>
+            <AgendaForo />
+          </aside>
         </div>
       </div>
     );
