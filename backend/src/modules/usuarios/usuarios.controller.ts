@@ -182,6 +182,30 @@ export const usuariosController = {
     } catch (err) { next(err); }
   },
 
+  /**
+   * Perfil público de un docente: cualquier usuario autenticado puede ver
+   * nombre, apellido y materias asignadas (sin datos sensibles).
+   * Solo funciona para usuarios con rol DOCENTE.
+   */
+  async getPerfilPublico(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) throw HttpError.unauthorized();
+      const usuario = await usuariosService.getById(req.params.id);
+      if (usuario.rol !== RolUsuario.DOCENTE) {
+        throw HttpError.forbidden('Este perfil no es público');
+      }
+      const materias = await usuariosService.getMaterias(req.params.id);
+      res.json({
+        id: usuario.id,
+        nombre: usuario.nombre,
+        apellido: usuario.apellido,
+        rol: usuario.rol,
+        avatarUrl: usuario.avatarUrl ?? null,
+        materias,
+      });
+    } catch (err) { next(err); }
+  },
+
   // Foto de perfil del propio usuario autenticado.
   async updateAvatar(req: Request, res: Response, next: NextFunction) {
     try {

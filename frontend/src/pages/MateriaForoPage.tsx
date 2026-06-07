@@ -31,6 +31,7 @@ import { colorMateria, getIniciales } from '../utils/format';
 import type {
   AutorMini,
   Comentario,
+  DocentePublico,
   Publicacion,
   PublicacionDetalle,
   TipoPublicacion,
@@ -137,6 +138,7 @@ export function MateriaForoPage() {
   const data = feed.data!;
   const color = colorMateria(data.materia.codigo);
   const puedePublicar = data.puedePublicar;
+  const docentes: DocentePublico[] = data.docentes ?? [];
   const examenes = data.items
     .filter((p) => p.tipo === 'EXAMEN' && p.fechaExamen)
     .sort((a, b) => new Date(a.fechaExamen!).getTime() - new Date(b.fechaExamen!).getTime());
@@ -168,6 +170,27 @@ export function MateriaForoPage() {
             <p className="text-white/80 text-sm mt-1">
               {data.materia.codigo} · {data.materia.carrera} · {data.materia.anio}° año
             </p>
+            {/* Docentes asignados */}
+            {docentes.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-white/60 uppercase tracking-wide font-medium">
+                  {docentes.length === 1 ? 'Docente:' : 'Docentes:'}
+                </span>
+                {docentes.map((d) => (
+                  <Link
+                    key={d.id}
+                    to={`/docentes/${d.id}`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 transition-colors text-white text-xs font-medium"
+                    title={`Ver perfil de ${d.apellido}, ${d.nombre}`}
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/30 text-[10px] font-bold">
+                      {getIniciales(d.nombre, d.apellido)}
+                    </span>
+                    {d.apellido}, {d.nombre}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
           {puedePublicar && (
             <Button
@@ -238,7 +261,7 @@ export function MateriaForoPage() {
             <p className="text-sm text-slate-500">Todavía no hay publicaciones en esta materia.</p>
             {puedePublicar && (
               <p className="text-xs text-slate-400 mt-1">
-                Creá la primera con “Nueva publicación”.
+                Creá la primera con "Nueva publicación".
               </p>
             )}
           </div>
@@ -728,41 +751,4 @@ function Comentarios({
                       </button>
                     )}
                   </div>
-                  <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-600">{c.contenido}</p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {/* Caja de comentario: solo para quienes pueden publicar (docente/staff) */}
-      {pub.puedePublicar && (
-        <div className="mt-4 flex items-end gap-2">
-          <textarea
-            className="form-input min-h-[44px] resize-y"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            placeholder="Escribir un comentario…"
-            maxLength={5000}
-          />
-          <Button
-            onClick={enviar}
-            disabled={enviando || texto.trim().length === 0}
-            leftIcon={enviando ? <Spinner size={16} /> : <Send size={16} />}
-          >
-            Enviar
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Avatar({ autor }: { autor: AutorMini }) {
-  return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy-100 text-xs font-semibold text-navy-900">
-      {getIniciales(autor.nombre, autor.apellido)}
-    </span>
-  );
-}
+          

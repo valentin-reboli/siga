@@ -16,6 +16,7 @@ import { PerfilPage } from './pages/PerfilPage';
 import { GestionUsuariosPage } from './pages/GestionUsuariosPage';
 import { MisMateriasPage } from './pages/MisMateriasPage';
 import { PlanEstudiosPage } from './pages/PlanEstudiosPage';
+import { PerfilPublicoPage } from './pages/PerfilPublicoPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Rutas de la app.
@@ -45,6 +46,9 @@ export default function App() {
 
             {/* Plan de estudios: solo alumno */}
             <Route path="/plan" element={<PlanEstudiosPage />} />
+
+            {/* Perfil público de un docente */}
+            <Route path="/docentes/:id" element={<PerfilPublicoPage />} />
 
             {/* Gestión de usuarios: solo staff administrativo */}
             <Route

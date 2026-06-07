@@ -42,6 +42,9 @@ export const constanciasController = {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.user) throw HttpError.unauthorized();
+      if (req.user.rol === RolUsuario.DOCENTE) {
+        throw HttpError.forbidden('Los docentes no tienen acceso a constancias de alumnos');
+      }
       const query = { ...(req.query as any) };
       if (req.user.rol === RolUsuario.ALUMNO) {
         const propio = await alumnosService.getByUsuarioId(req.user.sub);

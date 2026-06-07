@@ -104,6 +104,17 @@ export const foroService = {
     }
   },
 
+  /** Docentes asignados a la materia con datos públicos básicos. */
+  async getDocentesDeMateria(materiaId: string) {
+    const asignaciones = await prisma.docenteMateria.findMany({
+      where: { materiaId },
+      select: {
+        usuario: { select: { id: true, nombre: true, apellido: true, avatarUrl: true } },
+      },
+    });
+    return asignaciones.map((a) => a.usuario);
+  },
+
   /** Lista las publicaciones de una materia (fijadas primero, luego recientes). */
   async listPublicaciones(materiaId: string, query: ListPublicacionesQuery) {
     const where: Prisma.PublicacionWhereInput = { materiaId };

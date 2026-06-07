@@ -209,6 +209,13 @@ export interface PublicacionDetalle extends Publicacion {
   puedePublicar: boolean;
 }
 
+export interface DocentePublico {
+  id: string;
+  nombre: string;
+  apellido: string;
+  avatarUrl: string | null;
+}
+
 export interface ForoFeed {
   materia: {
     id: string;
@@ -219,6 +226,7 @@ export interface ForoFeed {
     cuatrimestre: number;
   };
   puedePublicar: boolean;
+  docentes: DocentePublico[];
   total: number;
   page: number;
   pageSize: number;

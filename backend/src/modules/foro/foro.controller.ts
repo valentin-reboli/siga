@@ -19,11 +19,12 @@ export const foroController = {
       const { materiaId } = req.params;
       const materia = await foroService.getMateriaOr404(materiaId);
       await foroService.assertPuedeVerForo(req.user!, materiaId);
-      const [data, puedePublicar] = await Promise.all([
+      const [data, puedePublicar, docentes] = await Promise.all([
         foroService.listPublicaciones(materiaId, req.query as any),
         foroService.puedePublicar(req.user!, materiaId),
+        foroService.getDocentesDeMateria(materiaId),
       ]);
-      res.json({ materia, puedePublicar, ...data });
+      res.json({ materia, puedePublicar, docentes, ...data });
     } catch (err) {
       next(err);
     }

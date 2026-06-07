@@ -1,5 +1,13 @@
 import { apiClient } from './client';
-import type { Paginated, RolUsuario, Usuario } from '../types';
+import type { DocentePublico, Paginated, RolUsuario, Usuario } from '../types';
+
+export interface PerfilPublicoDocente extends DocentePublico {
+  rol: 'DOCENTE';
+  materias: Array<{
+    materiaId: string;
+    materia: { id: string; codigo: string; nombre: string; anio: number; cuatrimestre: number; carrera: string };
+  }>;
+}
 
 export interface CreateAlumnoPayload {
   nombre: string; apellido: string;
@@ -53,6 +61,9 @@ export const usuariosApi = {
 
   getMaterias: (docenteId: string) =>
     apiClient.get(`/usuarios/${docenteId}/materias`).then((r) => r.data),
+
+  getPerfilPublico: (id: string) =>
+    apiClient.get<PerfilPublicoDocente>(`/usuarios/${id}/perfil-publico`).then((r) => r.data),
 
   // Foto de perfil del usuario autenticado.
   updateAvatar: (avatar: string) =>

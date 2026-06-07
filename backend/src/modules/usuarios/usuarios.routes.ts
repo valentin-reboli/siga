@@ -34,6 +34,9 @@ router.delete('/:id', requirePermission(PERMISSIONS.USERS_UPDATE), usuariosContr
 router.post('/:id/reactivar', requirePermission(PERMISSIONS.USERS_UPDATE), usuariosController.reactivate);
 router.post('/:id/reset-password', requirePermission(PERMISSIONS.USERS_RESET_PASSWORD), usuariosController.resetPassword);
 
+// Perfil público de un docente (cualquier usuario autenticado, solo rol DOCENTE).
+router.get('/:id/perfil-publico', usuariosController.getPerfilPublico);
+
 // Materias de un docente. La autorización (propio o staff) se resuelve en el
 // controller para que un docente pueda ver SUS propias asignaciones.
 router.get('/:id/materias', usuariosController.getMaterias);
