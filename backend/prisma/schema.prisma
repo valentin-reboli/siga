@@ -70,6 +70,7 @@ enum EstadoConstancia {
   EN_PROCESO
   EMITIDA
   RECHAZADA
+  CANCELADA
 }
 
 // ===================================================
@@ -323,25 +324,4 @@ model Comentario {
 // ===================================================
 // AUDITORÍA
 // ===================================================
-// Registro inmutable de acciones sensibles sobre usuarios (alta, edición,
-// cambio de rol, baja/reactivación, reseteo de contraseña, inicio de sesión).
-// Se guardan "snapshots" de nombre/email para que el log sobreviva aunque se
-// borre el usuario.
-
-model AuditLog {
-  id           String   @id @default(uuid())
-  accion       String // USER_CREATED, USER_UPDATED, USER_ROLE_CHANGED, USER_DEACTIVATED, USER_REACTIVATED, PASSWORD_RESET, LOGIN
-  actorId      String?
-  actorEmail   String?
-  targetId     String?
-  targetNombre String?
-  descripcion  String
-  ip           String?
-  creadoEn     DateTime @default(now())
-
-  @@index([creadoEn])
-  @@index([targetId])
-  @@index([actorId])
-  @@index([accion])
-  @@map("audit_logs")
-}
+// R
