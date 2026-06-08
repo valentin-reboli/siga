@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CalendarClock, GraduationCap, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarClock, GraduationCap, CalendarDays, ClipboardList } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { calendarioApi } from '../api/calendario.api';
 import { Card } from '../components/ui/Card';
@@ -13,14 +13,26 @@ const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 const META: Record<
   TipoEvento,
-  { label: string; chip: string; dot: string; icon: typeof CalendarClock }
+  { label: string; descripcion: string; chip: string; dot: string; icon: typeof CalendarClock }
 > = {
-  EXAMEN: { label: 'Examen', chip: 'bg-rose-100 text-rose-700', dot: 'bg-rose-500', icon: CalendarClock },
-  MESA: { label: 'Mesa de examen', chip: 'bg-indigo-100 text-indigo-700', dot: 'bg-indigo-500', icon: GraduationCap },
+  EXAMEN: {
+    label: 'Parcial / Evaluación',
+    descripcion: 'Fechas de parciales y evaluaciones publicadas por el docente en el foro.',
+    chip: 'bg-rose-100 text-rose-700',
+    dot: 'bg-rose-500',
+    icon: CalendarClock,
+  },
+  MESA: {
+    label: 'Mesa de examen final',
+    descripcion: 'Tus inscripciones a mesas de examen final.',
+    chip: 'bg-indigo-100 text-indigo-700',
+    dot: 'bg-indigo-500',
+    icon: GraduationCap,
+  },
 };
 
 const pad = (n: number) => String(n).padStart(2, '0');
-const keyOf = (iso: string) => iso.slice(0, 10); // 'YYYY-MM-DD' (UTC)
+const keyOf = (iso: string) => iso.slice(0, 10);
 const keyDate = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
 
 function hoyKeyUTC(): string {
@@ -31,12 +43,11 @@ function hoyKeyUTC(): string {
 export function CalendarioPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getUTCFullYear());
-  const [month, setMonth] = useState(now.getUTCMonth()); // 0-11
+  const [month, setMonth] = useState(now.getUTCMonth());
   const [selectedKey, setSelectedKey] = useState<string>(hoyKeyUTC());
 
-  // Primer día visible (lunes) y rango total de la grilla (6 semanas).
   const firstOfMonth = new Date(Date.UTC(year, month, 1));
-  const startWeekday = (firstOfMonth.getUTCDay() + 6) % 7; // 0 = lunes
+  const startWeekday = (firstOfMonth.getUTCDay() + 6) % 7;
   const cells = useMemo(
     () =>
       Array.from({ length: 42 }, (_, i) => new Date(Date.UTC(year, month, 1 - startWeekday + i))),
@@ -46,12 +57,22 @@ export function CalendarioPage() {
   const desde = cells[0];
   const hasta = new Date(cells[41].getTime() + (24 * 3600 - 1) * 1000);
 
+  // Eventos del mes visible
   const eventos = useApi(
     () => calendarioApi.list({ desde: desde.toISOString(), hasta: hasta.toISOString() }),
     [year, month],
   );
 
-  // Eventos agrupados por día.
+  // Próximos 90 días (para el panel lateral)
+  const proximosEventos = useApi(
+    () => {
+      const hoy = new Date();
+      const en90dias = new Date(hoy.getTime() + 90 * 24 * 3600 * 1000);
+      return calendarioApi.list({ desde: hoy.toISOString(), hasta: en90dias.toISOString() });
+    },
+    [],
+  );
+
   const porDia = useMemo(() => {
     const map = new Map<string, EventoCalendario[]>();
     for (const e of eventos.data ?? []) {
@@ -88,21 +109,28 @@ export function CalendarioPage() {
     <div className="mx-auto max-w-screen-xl">
       <Breadcrumb items={[{ label: 'SIGA', to: '/' }, { label: 'Calendario académico' }]} />
 
-      <div className="mb-6 flex items-end justify-between gap-4">
+      <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-serif text-2xl font-semibold text-navy-900">Calendario académico</h1>
           <p className="text-sm text-slate-500">Exámenes y mesas de tus materias</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {(Object.keys(META) as TipoEvento[]).map((t) => (
-            <span key={t} className="inline-flex items-center gap-1.5 text-xs text-slate-500">
-              <span className={`h-2.5 w-2.5 rounded-full ${META[t].dot}`} /> {META[t].label}
-            </span>
+        {/* Leyenda con descripción */}
+        <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+          {(Object.entries(META) as [TipoEvento, typeof META[TipoEvento]][]).map(([tipo, m]) => (
+            <div key={tipo} className="flex flex-col gap-0.5">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700">
+                <span className={`h-2.5 w-2.5 rounded-full ${m.dot}`} />
+                {m.label}
+              </span>
+              <span className="pl-4 text-[11px] text-slate-400 leading-snug max-w-[220px]">
+                {m.descripcion}
+              </span>
+            </div>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_20rem]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_22rem]">
         {/* Calendario */}
         <Card padding="none" className="overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
@@ -148,7 +176,6 @@ export function CalendarioPage() {
                 </div>
               )}
 
-              {/* Encabezado de días */}
               <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/60">
                 {DIAS.map((d) => (
                   <div
@@ -160,7 +187,6 @@ export function CalendarioPage() {
                 ))}
               </div>
 
-              {/* Celdas */}
               <div className="grid grid-cols-7">
                 {cells.map((d, i) => {
                   const y = d.getUTCFullYear();
@@ -213,12 +239,26 @@ export function CalendarioPage() {
                   );
                 })}
               </div>
+
+              {/* Aviso si el mes actual no tiene eventos */}
+              {!eventos.loading && (eventos.data ?? []).length === 0 && (
+                <div className="border-t border-slate-100 px-6 py-4 text-center">
+                  <p className="text-sm text-slate-400">
+                    No hay eventos este mes. Navegá hacia adelante o{' '}
+                    <Link to="/inscripciones" className="text-navy-700 hover:underline font-medium">
+                      inscribite a una mesa
+                    </Link>
+                    .
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </Card>
 
-        {/* Panel del día seleccionado */}
-        <aside>
+        {/* Panel lateral */}
+        <aside className="space-y-4">
+          {/* Día seleccionado */}
           <Card>
             <h3 className="font-serif text-lg font-semibold text-navy-900">
               {formatDiaLargo(selectedKey)}
@@ -230,39 +270,75 @@ export function CalendarioPage() {
             </p>
 
             {seleccionados.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 py-10 text-center">
-                <CalendarDays size={26} className="mx-auto mb-2 text-slate-300" />
-                <p className="text-sm text-slate-500">No hay actividades este día.</p>
+              <div className="rounded-xl border border-dashed border-slate-200 py-8 text-center">
+                <CalendarDays size={24} className="mx-auto mb-2 text-slate-300" />
+                <p className="text-sm text-slate-400">Sin actividades este día.</p>
               </div>
             ) : (
               <ul className="space-y-2">
-                {seleccionados.map((e) => {
+                {seleccionados.map((e) => (
+                  <EventoItem key={e.id} evento={e} />
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          {/* Próximos eventos — siguientes 90 días */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-serif text-base font-semibold text-navy-900">Próximos eventos</h3>
+              {proximosEventos.loading && <Spinner size={14} />}
+            </div>
+
+            {proximosEventos.error ? (
+              <p className="text-xs text-slate-500 italic">{proximosEventos.error}</p>
+            ) : !proximosEventos.loading && (proximosEventos.data ?? []).length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center">
+                <CalendarDays size={22} className="mx-auto mb-2 text-slate-300" />
+                <p className="text-sm text-slate-400">No tenés eventos en los próximos 90 días.</p>
+                <Link
+                  to="/inscripciones"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-navy-700 hover:underline"
+                >
+                  <ClipboardList size={12} /> Inscribirme a una mesa
+                </Link>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {(proximosEventos.data ?? []).slice(0, 6).map((e) => {
                   const meta = META[e.tipo];
-                  const Icon = meta.icon;
-                  const to =
-                    e.tipo === 'EXAMEN' && e.materia ? `/materias/${e.materia.id}` : '/inscripciones';
+                  const [y, m, d] = keyOf(e.fecha).split('-').map(Number);
+                  const fecha = new Date(Date.UTC(y, m - 1, d));
+                  const esCercano =
+                    (fecha.getTime() - Date.now()) / (1000 * 3600 * 24) <= 7;
                   return (
-                    <li key={e.id}>
-                      <Link
-                        to={to}
-                        className="flex items-start gap-3 rounded-lg border border-slate-100 px-3 py-2.5 transition-colors hover:bg-slate-50"
-                      >
-                        <span
-                          className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${meta.chip}`}
-                        >
-                          <Icon size={15} />
+                    <li
+                      key={e.id}
+                      className="flex items-start gap-3 rounded-lg border border-slate-100 px-3 py-2.5"
+                    >
+                      {/* Fecha compacta */}
+                      <div className="w-9 shrink-0 text-center">
+                        <p className="text-[10px] uppercase text-slate-400 leading-none">
+                          {fecha.toLocaleDateString('es-AR', { month: 'short', timeZone: 'UTC' })}
+                        </p>
+                        <p className={`text-lg font-serif font-semibold leading-tight ${esCercano ? 'text-rose-600' : 'text-slate-800'}`}>
+                          {d}
+                        </p>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900">{e.titulo}</p>
+                        <span className={`inline-block mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium ${meta.chip}`}>
+                          {meta.label}
                         </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-slate-900">{e.titulo}</p>
-                          <p className="truncate text-xs text-slate-500">
-                            {e.materia ? `${e.materia.codigo} · ` : ''}
-                            {e.detalle ?? meta.label}
-                          </p>
-                        </div>
-                      </Link>
+                      </div>
                     </li>
                   );
                 })}
+                {(proximosEventos.data ?? []).length > 6 && (
+                  <p className="text-center text-xs text-slate-400 pt-1">
+                    y {(proximosEventos.data ?? []).length - 6} más en los próximos 90 días
+                  </p>
+                )}
               </ul>
             )}
           </Card>
@@ -272,8 +348,35 @@ export function CalendarioPage() {
   );
 }
 
+function EventoItem({ evento }: { evento: EventoCalendario }) {
+  const meta = META[evento.tipo];
+  const Icon = meta.icon;
+  const to =
+    evento.tipo === 'EXAMEN' && evento.materia ? `/materias/${evento.materia.id}` : '/inscripciones';
+  return (
+    <li>
+      <Link
+        to={to}
+        className="flex items-start gap-3 rounded-lg border border-slate-100 px-3 py-2.5 transition-colors hover:bg-slate-50"
+      >
+        <span
+          className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${meta.chip}`}
+        >
+          <Icon size={15} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900">{evento.titulo}</p>
+          <p className="truncate text-xs text-slate-500">
+            {evento.materia ? `${evento.materia.codigo} · ` : ''}
+            {evento.detalle ?? meta.label}
+          </p>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
 function formatDiaLargo(key: string): string {
-  // key = 'YYYY-MM-DD' (UTC). Lo mostramos sin desfase de zona horaria.
   const [y, m, d] = key.split('-').map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   return date.toLocaleDateString('es-AR', {
