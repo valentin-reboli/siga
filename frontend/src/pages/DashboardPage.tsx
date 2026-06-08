@@ -12,7 +12,6 @@ import { Badge } from '../components/ui/Badge';
 import { FullPageLoader, Spinner } from '../components/ui/Spinner';
 import { ErrorAlert } from '../components/ui/ErrorAlert';
 import { CampusHero } from './dashboard/CampusHero';
-import { AccesosRapidos } from './dashboard/AccesosRapidos';
 import { MateriaCard } from './dashboard/MateriaCard';
 import { PanelAcciones, type AccionRequerida } from './dashboard/PanelAcciones';
 import { AgendaForo, ProximosExamenes, NovedadesForo } from './dashboard/AgendaForo';
@@ -68,6 +67,13 @@ export function DashboardPage() {
   const agenda = useApi(
     () => (isAlumno ? foroApi.agenda() : Promise.resolve(null)),
     [isAlumno],
+  );
+  const legajoStats = useApi(
+    () =>
+      isAlumno && alumno.data?.id
+        ? alumnosApi.getLegajo(alumno.data.id).then((d) => d.estadisticas)
+        : Promise.resolve(null),
+    [isAlumno, alumno.data?.id],
   );
   const misInscripciones = useApi(
     () =>
@@ -586,8 +592,10 @@ export function DashboardPage() {
   if (alumno.error) return <ErrorAlert message={alumno.error} />;
   if (!alumno.data) return null;
 
-  const aprobadas = cursadas.filter((i) => i.estadoCursada === 'APROBADA').length;
   const enCurso = cursadas.filter((i) => i.estadoCursada === 'EN_CURSO').length;
+  const progresoCarrera = legajoStats.data
+    ? Math.round((legajoStats.data.aprobadas / Math.max(legajoStats.data.totalMaterias, 1)) * 100)
+    : null;
 
   return (
     <div className="mx-auto max-w-screen-2xl">
@@ -596,9 +604,14 @@ export function DashboardPage() {
         rolLabel="Alumno"
         subtitle={alumno.data.carrera}
         stats={[
-          { label: 'Inscriptas', value: cursadas.length },
           { label: 'En curso', value: enCurso },
-          { label: 'Aprobadas', value: aprobadas },
+          {
+            label: 'Aprobadas',
+            value: legajoStats.data
+              ? `${legajoStats.data.aprobadas} / ${legajoStats.data.totalMaterias}`
+              : '…',
+          },
+          { label: 'Avance carrera', value: progresoCarrera != null ? `${progresoCarrera}%` : '…' },
         ]}
       />
 
@@ -648,6 +661,7 @@ export function DashboardPage() {
                     codigo={i.materia?.codigo ?? '—'}
                     nombre={i.materia?.nombre ?? 'Materia'}
                     to={i.materia?.id ? `/materias/${i.materia.id}` : undefined}
+                    estadoCursada={i.estadoCursada ?? undefined}
                   />
                 ))}
               </div>
@@ -681,21 +695,20 @@ export function DashboardPage() {
               </Link>
             </div>
             <p className="mb-4 text-xs text-slate-500">Mesas de examen e inscripciones activas</p>
-            <ListaMesas />
+            <ListaMesas alumnoId={alumno.data.id} />
           </Card>
         </aside>
       </div>
 
-      {/* Navegación secundaria */}
-      <div className="mt-8">
-        <AccesosRapidos modules={modules} />
-      </div>
     </div>
   );
 }
 
-function ListaMesas() {
-  const mesas = useApi(() => inscripcionesApi.list({ tipo: 'MESA_EXAMEN', pageSize: 5 }), []);
+function ListaMesas({ alumnoId }: { alumnoId: string }) {
+  const mesas = useApi(
+    () => inscripcionesApi.list({ alumnoId, tipo: 'MESA_EXAMEN', pageSize: 5 }),
+    [alumnoId],
+  );
 
   if (mesas.loading) return <Spinner />;
   if (!mesas.data?.items.length) {

@@ -2,6 +2,24 @@ import { Clock, MapPin, MessageSquare, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { colorMateria } from '../../utils/format';
 
+type EstadoCursadaLocal =
+  | 'EN_CURSO'
+  | 'REGULAR'
+  | 'APROBADA'
+  | 'REPROBADA'
+  | 'LIBRE';
+
+const ESTADO_CHIP: Record<
+  EstadoCursadaLocal,
+  { label: string; cls: string }
+> = {
+  EN_CURSO:  { label: 'En curso',  cls: 'bg-amber-100 text-amber-700' },
+  REGULAR:   { label: 'Regular',   cls: 'bg-blue-100 text-blue-700' },
+  APROBADA:  { label: 'Aprobada',  cls: 'bg-emerald-100 text-emerald-700' },
+  REPROBADA: { label: 'Reprobada', cls: 'bg-red-100 text-red-700' },
+  LIBRE:     { label: 'Libre',     cls: 'bg-red-100 text-red-600' },
+};
+
 interface Props {
   codigo: string;
   nombre: string;
@@ -9,6 +27,7 @@ interface Props {
   docente?: string;
   horario?: string;
   aula?: string;
+  estadoCursada?: string;
   /** Si se pasa, la card es clickeable y navega a esa ruta (el foro de la materia). */
   to?: string;
 }
@@ -17,8 +36,9 @@ interface Props {
  * Card de materia en grilla. Toma el color a partir del código (consistente
  * a través de toda la app). Si recibe `to`, se vuelve un enlace al foro.
  */
-export function MateriaCard({ codigo, nombre, comision, docente, horario, aula, to }: Props) {
+export function MateriaCard({ codigo, nombre, comision, docente, horario, aula, estadoCursada, to }: Props) {
   const color = colorMateria(codigo);
+  const chipInfo = estadoCursada ? ESTADO_CHIP[estadoCursada as EstadoCursadaLocal] : null;
 
   const content = (
     <>
@@ -29,8 +49,17 @@ export function MateriaCard({ codigo, nombre, comision, docente, horario, aula, 
         >
           {codigo.slice(0, 2)}
         </div>
-        <div className="min-w-0">
-          <h4 className="font-semibold text-slate-900 truncate">{nombre}</h4>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h4 className="font-semibold text-slate-900 truncate">{nombre}</h4>
+            {chipInfo && (
+              <span
+                className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${chipInfo.cls}`}
+              >
+                {chipInfo.label}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500 truncate">
             {codigo}
             {comision && ` · Com. ${comision}`}
