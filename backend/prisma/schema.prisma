@@ -354,4 +354,26 @@ model Comentario {
 // ===================================================
 // AUDITORÍA
 // ===================================================
-// R
+// Registro inmutable de acciones sensibles del sistema: altas y cambios de
+// usuarios, cambios de rol, reseteo de contraseñas, inicios de sesión, etc.
+// Solo se inserta y se consulta (no se edita ni se borra desde la app).
+model AuditLog {
+  id           String   @id @default(uuid())
+  // Código de la acción (ver AUDIT en src/utils/audit.ts): LOGIN, USER_CREATED…
+  accion       String
+  // Quién ejecutó la acción (puede ser null para acciones del sistema).
+  actorId      String?
+  actorEmail   String?
+  // Sobre quién/qué recayó la acción.
+  targetId     String?
+  targetNombre String?
+  descripcion  String
+  ip           String?
+  creadoEn     DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetId])
+  @@index([accion])
+  @@index([creadoEn])
+  @@map("audit_logs")
+}
