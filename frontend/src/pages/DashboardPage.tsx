@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, GraduationCap, MessageSquare, ClipboardCheck, BookOpen } from 'lucide-react';
+import { ArrowRight, GraduationCap, MessageSquare, ClipboardCheck, BookOpen, UserCog, ClipboardList, FileBadge2, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
 import { alumnosApi } from '../api/alumnos.api';
@@ -17,6 +17,7 @@ import { MateriaCard } from './dashboard/MateriaCard';
 import { PanelAcciones, type AccionRequerida } from './dashboard/PanelAcciones';
 import { AgendaForo, ProximosExamenes, NovedadesForo } from './dashboard/AgendaForo';
 import { foroApi } from '../api/foro.api';
+import { auditoriaApi } from '../api/auditoria.api';
 import { modulesForRole } from '../config/modules';
 import { colorMateria } from '../utils/format';
 import type { RolUsuario } from '../types';
@@ -44,6 +45,7 @@ export function DashboardPage() {
   const { usuario } = useAuth();
   const isAlumno = usuario?.rol === 'ALUMNO';
   const isDocente = usuario?.rol === 'DOCENTE';
+  const isSuperAdmin = usuario?.rol === 'SUPERADMIN';
   const year = new Date().getFullYear();
 
   const alumno = useApi(() => (isAlumno ? alumnosApi.me() : Promise.resolve(null)), [isAlumno]);
@@ -55,8 +57,8 @@ export function DashboardPage() {
     [isAlumno],
   );
   const constancias = useApi(
-    () => (!isDocente ? constanciasApi.list({ pageSize: 5 }) : Promise.resolve(null)),
-    [isDocente],
+    () => (!isDocente ? constanciasApi.list({ pageSize: isSuperAdmin ? 20 : 5 }) : Promise.resolve(null)),
+    [isDocente, isSuperAdmin],
   );
   const misMaterias = useApi(
     () => (isDocente && usuario ? usuariosApi.getMaterias(usuario.id) : Promise.resolve(null)),
@@ -72,6 +74,18 @@ export function DashboardPage() {
         ? inscripcionesApi.list({ tipo: 'CURSADA', cicloLectivo: year, pageSize: 100 })
         : Promise.resolve(null),
     [isDocente],
+  );
+  const statsAlumnos = useApi(
+    () => isSuperAdmin ? usuariosApi.list({ rol: 'ALUMNO', activo: true, pageSize: 1 }) : Promise.resolve(null),
+    [isSuperAdmin],
+  );
+  const statsDocentes = useApi(
+    () => isSuperAdmin ? usuariosApi.list({ rol: 'DOCENTE', activo: true, pageSize: 1 }) : Promise.resolve(null),
+    [isSuperAdmin],
+  );
+  const actividadReciente = useApi(
+    () => isSuperAdmin ? auditoriaApi.list({ pageSize: 8 }) : Promise.resolve(null),
+    [isSuperAdmin],
   );
 
   const cursadas = useMemo(
@@ -275,6 +289,139 @@ export function DashboardPage() {
           {/* Columna lateral: agenda del foro (próximos exámenes + novedades) */}
           <aside>
             <AgendaForo />
+          </aside>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Superadmin ──────────────────────────────────────────────────────────────
+  if (isSuperAdmin) {
+    if (constancias.loading || statsAlumnos.loading || statsDocentes.loading) return <FullPageLoader />;
+
+    const pendientes = (constancias.data?.items ?? []).filter(
+      (c) => c.estado === 'SOLICITADA' || c.estado === 'EN_PROCESO',
+    );
+
+    function tiempoRelativo(iso: string): string {
+      const diff = Date.now() - new Date(iso).getTime();
+      const min = Math.floor(diff / 60000);
+      if (min < 2) return 'Hace un momento';
+      if (min < 60) return `Hace ${min} min`;
+      const hrs = Math.floor(min / 60);
+      if (hrs < 24) return `Hace ${hrs} h`;
+      return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+    }
+
+    return (
+      <div className="mx-auto max-w-screen-xl">
+        <CampusHero
+          nombre={usuario.nombre}
+          rolLabel="Dirección / IT"
+          subtitle={`Sistema de gestión académica · ${year}`}
+          stats={[
+            { label: 'Alumnos activos', value: statsAlumnos.data?.total ?? '…' },
+            { label: 'Docentes', value: statsDocentes.data?.total ?? '…' },
+            { label: 'Pendientes', value: pendientes.length },
+          ]}
+        />
+
+        {/* Acciones rápidas */}
+        <div className="mb-6 flex flex-wrap gap-3">
+          <Link
+            to="/usuarios"
+            className="inline-flex items-center gap-2 rounded-xl bg-navy-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-navy-800 transition-colors"
+          >
+            <UserCog size={15} /> Gestión de usuarios
+          </Link>
+          <Link
+            to="/inscripciones"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <ClipboardList size={15} /> Inscripciones
+          </Link>
+          <Link
+            to="/constancias"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <FileBadge2 size={15} /> Constancias
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_22rem]">
+          {/* Constancias pendientes */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                Constancias pendientes
+                {pendientes.length > 0 && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                    {pendientes.length}
+                  </span>
+                )}
+              </h2>
+              <Link to="/constancias" className="btn-ghost text-sm">
+                Ver todas <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            {pendientes.length === 0 ? (
+              <Card>
+                <div className="py-8 text-center">
+                  <FileBadge2 size={32} className="mx-auto mb-2 text-slate-300" />
+                  <p className="text-sm text-slate-500">No hay constancias pendientes.</p>
+                </div>
+              </Card>
+            ) : (
+              <Card>
+                <ul className="divide-y divide-slate-100">
+                  {pendientes.map((c) => (
+                    <li key={c.id} className="flex items-start justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900">
+                          {c.tipo.replace(/_/g, ' ')}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {c.alumno
+                            ? `${c.alumno.apellido}, ${c.alumno.nombre}`
+                            : '—'}{' '}
+                          · {new Date(c.fechaSolicitud).toLocaleDateString('es-AR')}
+                        </p>
+                      </div>
+                      <Badge tone={c.estado === 'EN_PROCESO' ? 'warn' : 'info'}>
+                        {c.estado === 'EN_PROCESO' ? 'En proceso' : 'Solicitada'}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+          </section>
+
+          {/* Actividad reciente — audit log */}
+          <aside className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={15} className="text-slate-400" />
+              <h2 className="text-sm font-semibold text-slate-700">Actividad reciente</h2>
+            </div>
+            <Card>
+              {actividadReciente.loading ? (
+                <Spinner className="mx-auto" />
+              ) : !actividadReciente.data?.items.length ? (
+                <p className="text-sm italic text-slate-500">Sin actividad registrada.</p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {actividadReciente.data.items.map((log) => (
+                    <li key={log.id} className="py-2.5">
+                      <p className="text-sm text-slate-800 leading-snug">{log.descripcion}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        {log.actorEmail ?? 'Sistema'} · {tiempoRelativo(log.creadoEn)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
           </aside>
         </div>
       </div>
