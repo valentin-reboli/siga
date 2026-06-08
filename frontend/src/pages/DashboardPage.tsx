@@ -46,6 +46,7 @@ export function DashboardPage() {
   const isAlumno = usuario?.rol === 'ALUMNO';
   const isDocente = usuario?.rol === 'DOCENTE';
   const isSuperAdmin = usuario?.rol === 'SUPERADMIN';
+  const isAdmin = usuario?.rol === 'ADMINISTRACION';
   const year = new Date().getFullYear();
 
   const alumno = useApi(() => (isAlumno ? alumnosApi.me() : Promise.resolve(null)), [isAlumno]);
@@ -57,8 +58,8 @@ export function DashboardPage() {
     [isAlumno],
   );
   const constancias = useApi(
-    () => (!isDocente ? constanciasApi.list({ pageSize: isSuperAdmin ? 20 : 5 }) : Promise.resolve(null)),
-    [isDocente, isSuperAdmin],
+    () => (!isDocente ? constanciasApi.list({ pageSize: (isSuperAdmin || isAdmin) ? 20 : 5 }) : Promise.resolve(null)),
+    [isDocente, isSuperAdmin, isAdmin],
   );
   const misMaterias = useApi(
     () => (isDocente && usuario ? usuariosApi.getMaterias(usuario.id) : Promise.resolve(null)),
@@ -86,6 +87,16 @@ export function DashboardPage() {
   const actividadReciente = useApi(
     () => isSuperAdmin ? auditoriaApi.list({ pageSize: 8 }) : Promise.resolve(null),
     [isSuperAdmin],
+  );
+  const statsAlumnosAdmin = useApi(
+    () => isAdmin ? usuariosApi.list({ rol: 'ALUMNO', activo: true, pageSize: 1 }) : Promise.resolve(null),
+    [isAdmin],
+  );
+  const inscripcionesPendientes = useApi(
+    () => isAdmin
+      ? inscripcionesApi.list({ tipo: 'CURSADA', cicloLectivo: year, pageSize: 20 })
+      : Promise.resolve(null),
+    [isAdmin],
   );
 
   const cursadas = useMemo(
@@ -428,53 +439,144 @@ export function DashboardPage() {
     );
   }
 
-  // ── Staff / administración ────────────────────────────────────────────────
-  if (!isAlumno) {
-    if (constancias.loading) return <FullPageLoader />;
+  // ── Administración ───────────────────────────────────────────────────────────
+  if (isAdmin) {
+    if (constancias.loading || statsAlumnosAdmin.loading) return <FullPageLoader />;
+
+    const constPendientes = (constancias.data?.items ?? []).filter(
+      (c) => c.estado === 'SOLICITADA' || c.estado === 'EN_PROCESO',
+    );
+    const inscPendientes = (inscripcionesPendientes.data?.items ?? []).filter(
+      (i) => i.estado === 'PENDIENTE',
+    );
 
     return (
-      <div className="mx-auto max-w-screen-2xl">
+      <div className="mx-auto max-w-screen-xl">
         <CampusHero
           nombre={usuario.nombre}
-          rolLabel={ROL_LABEL[usuario.rol]}
+          rolLabel="Administración"
           subtitle="Gestión académica del instituto"
+          stats={[
+            { label: 'Alumnos activos', value: statsAlumnosAdmin.data?.total ?? '…' },
+            { label: 'Constancias pendientes', value: constPendientes.length },
+            { label: 'Inscripciones pendientes', value: inscripcionesPendientes.loading ? '…' : inscPendientes.length },
+          ]}
         />
 
-        <AccesosRapidos modules={modules} />
+        {/* Acciones rápidas */}
+        <div className="mb-6 flex flex-wrap gap-3">
+          <Link
+            to="/usuarios"
+            className="inline-flex items-center gap-2 rounded-xl bg-navy-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-navy-800 transition-colors"
+          >
+            <GraduationCap size={15} /> Nuevo alumno
+          </Link>
+          <Link
+            to="/constancias"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <FileBadge2 size={15} /> Constancias
+          </Link>
+          <Link
+            to="/inscripciones"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <ClipboardList size={15} /> Inscripciones
+          </Link>
+        </div>
 
-        {constancias.data && constancias.data.items.length > 0 && (
-          <section>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-700">Constancias recientes</h2>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_22rem]">
+          {/* Constancias pendientes */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                Constancias pendientes
+                {constPendientes.length > 0 && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                    {constPendientes.length}
+                  </span>
+                )}
+              </h2>
               <Link to="/constancias" className="btn-ghost text-sm">
                 Ver todas <ArrowRight size={14} />
               </Link>
             </div>
-            <Card>
-              <ul className="divide-y divide-slate-100">
-                {constancias.data.items.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between py-3 text-sm">
-                    <span className="text-slate-900">
-                      {c.tipo.replace(/_/g, ' ')} —{' '}
-                      {c.alumno ? `${c.alumno.apellido}, ${c.alumno.nombre}` : '—'}
-                    </span>
-                    <Badge
-                      tone={
-                        c.estado === 'EMITIDA'
-                          ? 'success'
-                          : c.estado === 'RECHAZADA'
-                            ? 'danger'
-                            : 'neutral'
-                      }
-                    >
-                      {c.estado}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+            {constPendientes.length === 0 ? (
+              <Card>
+                <div className="py-8 text-center">
+                  <FileBadge2 size={32} className="mx-auto mb-2 text-slate-300" />
+                  <p className="text-sm text-slate-500">No hay constancias pendientes.</p>
+                </div>
+              </Card>
+            ) : (
+              <Card>
+                <ul className="divide-y divide-slate-100">
+                  {constPendientes.map((c) => (
+                    <li key={c.id} className="flex items-start justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900">
+                          {c.tipo.replace(/_/g, ' ')}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {c.alumno ? `${c.alumno.apellido}, ${c.alumno.nombre}` : '—'}{' '}
+                          · {new Date(c.fechaSolicitud).toLocaleDateString('es-AR')}
+                        </p>
+                      </div>
+                      <Badge tone={c.estado === 'EN_PROCESO' ? 'warn' : 'info'}>
+                        {c.estado === 'EN_PROCESO' ? 'En proceso' : 'Solicitada'}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
           </section>
-        )}
+
+          {/* Inscripciones pendientes de confirmación */}
+          <aside className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                Inscripciones pendientes
+                {inscPendientes.length > 0 && (
+                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-700">
+                    {inscPendientes.length}
+                  </span>
+                )}
+              </h2>
+              <Link to="/inscripciones" className="btn-ghost text-sm">
+                Ver todas <ArrowRight size={14} />
+              </Link>
+            </div>
+            {inscripcionesPendientes.loading ? (
+              <Card><Spinner className="mx-auto" /></Card>
+            ) : inscPendientes.length === 0 ? (
+              <Card>
+                <div className="py-8 text-center">
+                  <ClipboardList size={32} className="mx-auto mb-2 text-slate-300" />
+                  <p className="text-sm text-slate-500">Sin inscripciones pendientes.</p>
+                </div>
+              </Card>
+            ) : (
+              <Card>
+                <ul className="divide-y divide-slate-100">
+                  {inscPendientes.map((i) => (
+                    <li key={i.id} className="py-3">
+                      <p className="text-sm font-medium text-slate-900 leading-snug">
+                        {i.materia?.nombre ?? '—'}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {i.alumno
+                          ? `${i.alumno.apellido}, ${i.alumno.nombre}`
+                          : '—'}{' '}
+                        · {new Date(i.fechaInscripcion).toLocaleDateString('es-AR')}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+          </aside>
+        </div>
       </div>
     );
   }

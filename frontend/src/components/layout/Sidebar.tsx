@@ -243,6 +243,84 @@ export function Sidebar({ periodo }: { periodo?: PeriodoInfo }) {
     );
   }
 
+  // ── Sidebar específico para ADMINISTRACION ──────────────────────────────────
+  if (usuario?.rol === 'ADMINISTRACION') {
+    type Group = { label: string; items: Array<{ to: string; label: string; Icon: LucideIcon }> };
+    const groups: Group[] = [
+      {
+        label: 'Principal',
+        items: [{ to: '/', label: 'Inicio', Icon: Home }],
+      },
+      {
+        label: 'Gestión',
+        items: [
+          { to: '/inscripciones', label: 'Inscripciones', Icon: ClipboardList },
+          { to: '/legajo', label: 'Legajos', Icon: FileText },
+          { to: '/constancias', label: 'Constancias', Icon: FileBadge2 },
+          { to: '/usuarios', label: 'Usuarios', Icon: UserCog },
+        ],
+      },
+      {
+        label: 'Campus',
+        items: [
+          { to: '/materias', label: 'Materias y foros', Icon: BookOpen },
+          { to: '/calendario', label: 'Calendario', Icon: Calendar },
+        ],
+      },
+      {
+        label: 'Personal',
+        items: [
+          { to: '/perfil', label: 'Mi perfil', Icon: User },
+        ],
+      },
+    ];
+
+    return (
+      <aside className="w-64 shrink-0 border-r border-slate-200 bg-white flex flex-col">
+        <div className="px-6 py-5">
+          <p className="text-[11px] uppercase tracking-widest text-slate-400 font-medium">Menú</p>
+        </div>
+
+        <nav className="flex-1 px-3 overflow-y-auto pb-4">
+          {groups.map((group) => (
+            <div key={group.label}>
+              <p className="mt-5 mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map(({ to, label, Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={to === '/'}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-navy-50 text-navy-900'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      }`
+                    }
+                  >
+                    {({ isActive }: { isActive: boolean }) => (
+                      <>
+                        <span className={isActive ? 'text-navy-700' : 'text-slate-400'}>
+                          <Icon size={18} />
+                        </span>
+                        <span className="flex-1">{label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {periodo && <PeriodoWidget periodo={periodo} />}
+      </aside>
+    );
+  }
+
   // ── Sidebar genérico para otros roles ────────────────────────────────────
   const items: NavItem[] = [
     { to: '/', label: 'Inicio', Icon: Home },
