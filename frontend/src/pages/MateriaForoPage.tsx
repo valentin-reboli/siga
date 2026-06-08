@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   CalendarClock,
+  ClipboardCheck,
   Download,
   FileText,
   Lock,
@@ -193,14 +194,22 @@ export function MateriaForoPage() {
             )}
           </div>
           {puedePublicar && (
-            <Button
-              variant="secondary"
-              className="bg-white shadow-sm"
-              leftIcon={<Plus size={16} />}
-              onClick={() => setNuevoOpen(true)}
-            >
-              Nueva publicación
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to={`/asistencias/${materiaId}`}
+                className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2.5 text-sm font-semibold text-white ring-1 ring-white/30 transition-colors hover:bg-white/30"
+              >
+                <ClipboardCheck size={16} /> Tomar asistencia
+              </Link>
+              <Button
+                variant="secondary"
+                className="bg-white shadow-sm"
+                leftIcon={<Plus size={16} />}
+                onClick={() => setNuevoOpen(true)}
+              >
+                Nueva publicación
+              </Button>
+            </div>
           )}
         </div>
       </div>
