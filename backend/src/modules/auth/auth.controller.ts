@@ -31,6 +31,25 @@ export const authController = {
     }
   },
 
+  async changePassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) throw HttpError.unauthorized();
+      await authService.changePassword(req.user.sub, req.body);
+      await registrarAuditoria({
+        accion: AUDIT.UPDATE,
+        actorId: req.user.sub,
+        actorEmail: req.user.email,
+        targetId: req.user.sub,
+        targetNombre: req.user.email,
+        descripcion: 'Cambió su contraseña',
+        ip: req.ip,
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async me(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.user) throw HttpError.unauthorized();

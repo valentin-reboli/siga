@@ -1,9 +1,13 @@
 import { useRef, useState } from 'react';
-import { Camera, Trash2, Loader2, Pencil, Check, X } from 'lucide-react';
+import {
+  Camera, Trash2, Loader2, Pencil, Check, X,
+  KeyRound, Eye, EyeOff, ShieldCheck,
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
 import { alumnosApi } from '../api/alumnos.api';
 import { usuariosApi } from '../api/usuarios.api';
+import { authApi } from '../api/auth.api';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -23,42 +27,54 @@ export function PerfilPage() {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorAvatar, setErrorAvatar] = useState<string | null>(null);
 
-  // Estado para edición de contacto
+  // ── Contacto (alumno) ────────────────────────────────────────────────────
   const [editandoContacto, setEditandoContacto] = useState(false);
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
   const [guardandoContacto, setGuardandoContacto] = useState(false);
   const [errorContacto, setErrorContacto] = useState<string | null>(null);
 
+  // ── Cambio de contraseña ─────────────────────────────────────────────────
+  const [cambioClaveOpen, setCambioClaveOpen] = useState(false);
+  const [claveActual, setClaveActual] = useState('');
+  const [claveNueva, setClaveNueva] = useState('');
+  const [claveConfirm, setClaveConfirm] = useState('');
+  const [showClaves, setShowClaves] = useState(false);
+  const [guardandoClave, setGuardandoClave] = useState(false);
+  const [errorClave, setErrorClave] = useState<string | null>(null);
+  const [claveCambiada, setClaveCambiada] = useState(false);
+
   if (!usuario || alumno.loading) return <FullPageLoader />;
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   async function onArchivo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ''; // permite re-elegir el mismo archivo
+    e.target.value = '';
     if (!file) return;
-    setError(null);
+    setErrorAvatar(null);
     setSubiendo(true);
     try {
       const dataUrl = await fileToAvatarDataUrl(file, 256);
       await usuariosApi.updateAvatar(dataUrl);
       await refresh();
     } catch (err) {
-      setError(extractErrorMessage(err, 'No se pudo actualizar la foto'));
+      setErrorAvatar(extractErrorMessage(err, 'No se pudo actualizar la foto'));
     } finally {
       setSubiendo(false);
     }
   }
 
   async function quitarFoto() {
-    setError(null);
+    setErrorAvatar(null);
     setSubiendo(true);
     try {
       await usuariosApi.removeAvatar();
       await refresh();
     } catch (err) {
-      setError(extractErrorMessage(err, 'No se pudo quitar la foto'));
+      setErrorAvatar(extractErrorMessage(err, 'No se pudo quitar la foto'));
     } finally {
       setSubiendo(false);
     }
@@ -85,15 +101,51 @@ export function PerfilPage() {
     }
   }
 
+  async function guardarClave() {
+    setErrorClave(null);
+    if (claveNueva.length < 8) {
+      setErrorClave('La nueva contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (claveNueva !== claveConfirm) {
+      setErrorClave('Las contraseñas no coinciden.');
+      return;
+    }
+    setGuardandoClave(true);
+    try {
+      await authApi.changePassword(claveActual, claveNueva);
+      setClaveCambiada(true);
+      setCambioClaveOpen(false);
+      setClaveActual('');
+      setClaveNueva('');
+      setClaveConfirm('');
+    } catch (err) {
+      setErrorClave(extractErrorMessage(err, 'No se pudo cambiar la contraseña'));
+    } finally {
+      setGuardandoClave(false);
+    }
+  }
+
+  function cancelarCambioClave() {
+    setCambioClaveOpen(false);
+    setClaveActual('');
+    setClaveNueva('');
+    setClaveConfirm('');
+    setErrorClave(null);
+    setClaveCambiada(false);
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="mx-auto max-w-screen-lg">
       <Breadcrumb items={[{ label: 'SIGA', to: '/' }, { label: 'Mi perfil' }]} />
-
       <h1 className="mb-6 font-serif text-2xl font-semibold text-navy-900">Mi perfil</h1>
 
-      <Card>
+      {/* ── Identidad y datos ── */}
+      <Card className="mb-4">
+        {/* Avatar + nombre */}
         <div className="mb-6 flex flex-col items-center gap-5 border-b border-slate-100 pb-6 sm:flex-row sm:items-center">
-          {/* Avatar */}
           <div className="relative shrink-0">
             {usuario.avatarUrl ? (
               <img
@@ -115,13 +167,7 @@ export function PerfilPage() {
             >
               {subiendo ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
             </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              onChange={onArchivo}
-              className="hidden"
-            />
+            <input ref={fileRef} type="file" accept="image/*" onChange={onArchivo} className="hidden" />
           </div>
 
           <div className="text-center sm:text-left">
@@ -131,14 +177,6 @@ export function PerfilPage() {
             <p className="text-sm text-slate-500">{usuario.email}</p>
             <div className="mt-2 flex items-center justify-center gap-3 sm:justify-start">
               <Badge tone="navy">{usuario.rol}</Badge>
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={subiendo}
-                className="text-xs font-medium text-navy-700 hover:underline disabled:opacity-60"
-              >
-                Cambiar foto
-              </button>
               {usuario.avatarUrl && (
                 <button
                   type="button"
@@ -146,19 +184,16 @@ export function PerfilPage() {
                   disabled={subiendo}
                   className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-danger disabled:opacity-60"
                 >
-                  <Trash2 size={12} /> Quitar
+                  <Trash2 size={12} /> Quitar foto
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-4">
-            <ErrorAlert message={error} />
-          </div>
-        )}
+        {errorAvatar && <div className="mb-4"><ErrorAlert message={errorAvatar} /></div>}
 
+        {/* Datos institucionales */}
         <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm md:grid-cols-2">
           <Dato label="Email" valor={usuario.email} />
           <Dato label="Rol institucional" valor={usuario.rol} />
@@ -174,7 +209,7 @@ export function PerfilPage() {
           )}
         </dl>
 
-        {/* Datos de contacto editables (solo para ALUMNO) */}
+        {/* Datos de contacto editables (alumno) */}
         {alumno.data && (
           <div className="mt-6 border-t border-slate-100 pt-6">
             <div className="flex items-center justify-between mb-3">
@@ -241,6 +276,115 @@ export function PerfilPage() {
             )}
           </div>
         )}
+      </Card>
+
+      {/* ── Seguridad ── */}
+      <Card>
+        <div className="flex items-center gap-2 mb-4">
+          <ShieldCheck size={18} className="text-slate-400" />
+          <h3 className="text-sm font-semibold text-slate-700">Seguridad</h3>
+        </div>
+
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm md:grid-cols-2 mb-6">
+          <Dato
+            label="Último acceso"
+            valor={
+              usuario.ultimoLogin
+                ? new Date(usuario.ultimoLogin).toLocaleString('es-AR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  })
+                : '—'
+            }
+          />
+          <Dato label="Cuenta" valor={<Badge tone="success">Activa</Badge>} />
+        </dl>
+
+        {/* Cambio de contraseña */}
+        <div className="border-t border-slate-100 pt-5">
+          {claveCambiada && !cambioClaveOpen && (
+            <p className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              <Check size={15} /> Contraseña actualizada correctamente.
+            </p>
+          )}
+
+          {!cambioClaveOpen ? (
+            <button
+              type="button"
+              onClick={() => { setCambioClaveOpen(true); setClaveCambiada(false); }}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <KeyRound size={15} className="text-slate-400" />
+              Cambiar contraseña
+            </button>
+          ) : (
+            <div className="space-y-3 max-w-sm">
+              <p className="text-sm font-semibold text-slate-700">Cambiar contraseña</p>
+              {errorClave && <ErrorAlert message={errorClave} />}
+
+              <div>
+                <label className="form-label">Contraseña actual</label>
+                <div className="relative">
+                  <input
+                    type={showClaves ? 'text' : 'password'}
+                    value={claveActual}
+                    onChange={(e) => setClaveActual(e.target.value)}
+                    className="form-input pr-10"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowClaves((v) => !v)}
+                    className="absolute inset-y-0 right-2 flex items-center px-1 text-slate-400 hover:text-slate-600"
+                  >
+                    {showClaves ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label">Nueva contraseña</label>
+                <input
+                  type={showClaves ? 'text' : 'password'}
+                  value={claveNueva}
+                  onChange={(e) => setClaveNueva(e.target.value)}
+                  className="form-input"
+                  autoComplete="new-password"
+                  placeholder="Mínimo 8 caracteres"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Confirmar nueva contraseña</label>
+                <input
+                  type={showClaves ? 'text' : 'password'}
+                  value={claveConfirm}
+                  onChange={(e) => setClaveConfirm(e.target.value)}
+                  className="form-input"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  onClick={guardarClave}
+                  disabled={guardandoClave || !claveActual || !claveNueva || !claveConfirm}
+                  leftIcon={guardandoClave ? <Spinner size={14} className="text-white" /> : <Check size={14} />}
+                >
+                  Guardar contraseña
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={cancelarCambioClave}
+                  disabled={guardandoClave}
+                  leftIcon={<X size={14} />}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </Card>
     </div>
   );

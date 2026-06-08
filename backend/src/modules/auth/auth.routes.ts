@@ -4,7 +4,7 @@ import { authenticate } from '../../middleware/auth';
 import { requirePermission, PERMISSIONS } from '../../auth/permissions';
 import { rateLimit } from '../../middleware/rateLimit';
 import { validate } from '../../middleware/validate';
-import { loginSchema, registerSchema } from './auth.schemas';
+import { changePasswordSchema, loginSchema, registerSchema } from './auth.schemas';
 
 const router = Router();
 
@@ -28,5 +28,8 @@ router.post(
 
 // Información del usuario autenticado
 router.get('/me', authenticate, authController.me);
+
+// Cambio de contraseña (usuario autenticado).
+router.patch('/me/password', authenticate, validate(changePasswordSchema), authController.changePassword);
 
 export const authRoutes = router;

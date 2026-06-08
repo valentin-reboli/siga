@@ -2,7 +2,7 @@ import { prisma } from '../../config/prisma';
 import { HttpError } from '../../utils/httpError';
 import { signToken } from '../../utils/jwt';
 import { comparePassword, hashPassword } from '../../utils/password';
-import { LoginInput, RegisterInput } from './auth.schemas';
+import { ChangePasswordInput, LoginInput, RegisterInput } from './auth.schemas';
 import { RolUsuario } from '@prisma/client';
 
 export const authService = {
@@ -74,6 +74,21 @@ export const authService = {
         rol: usuario.rol,
       },
     };
+  },
+
+  async changePassword(userId: string, data: ChangePasswordInput) {
+    const usuario = await prisma.usuario.findUnique({ where: { id: userId } });
+    if (!usuario) throw HttpError.notFound('Usuario no encontrado');
+
+    const ok = await comparePassword(data.claveActual, usuario.passwordHash);
+    if (!ok) throw HttpError.badRequest('La contraseña actual es incorrecta');
+
+    const nuevoHash = await hashPassword(data.claveNueva);
+    await prisma.usuario.update({
+      where: { id: userId },
+      data: { passwordHash: nuevoHash },
+    });
+    return { ok: true };
   },
 
   async me(userId: string) {
