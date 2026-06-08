@@ -14,6 +14,7 @@ import { foroRoutes } from './modules/foro/foro.routes';
 import { calendarioRoutes } from './modules/calendario/calendario.routes';
 import { auditoriaRoutes } from './modules/auditoria/auditoria.routes';
 import { notasRoutes } from './modules/notas/notas.routes';
+import { asistenciasRoutes } from './modules/asistencias/asistencias.routes';
 
 export function createApp() {
   const app = express();
@@ -42,6 +43,7 @@ export function createApp() {
   app.use('/api/foro', foroRoutes);
   app.use('/api/calendario', calendarioRoutes);
   app.use('/api/auditoria', auditoriaRoutes);
+  app.use('/api/asistencias', asistenciasRoutes);
   app.use('/api/inscripciones/:id/parciales', notasRoutes);
 
   // 404

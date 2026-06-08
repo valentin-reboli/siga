@@ -15,6 +15,7 @@ import { CalendarioPage } from './pages/CalendarioPage';
 import { PerfilPage } from './pages/PerfilPage';
 import { GestionUsuariosPage } from './pages/GestionUsuariosPage';
 import { MisMateriasPage } from './pages/MisMateriasPage';
+import { AsistenciaPage } from './pages/AsistenciaPage';
 import { PlanEstudiosPage } from './pages/PlanEstudiosPage';
 import { PerfilPublicoPage } from './pages/PerfilPublicoPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -65,6 +66,15 @@ export default function App() {
               element={
                 <RoleRoute allow={['DOCENTE', 'SUPERADMIN']}>
                   <MisMateriasPage />
+                </RoleRoute>
+              }
+            />
+            {/* Tomar asistencia de una materia: docente (sus materias) o staff */}
+            <Route
+              path="/asistencias/:materiaId"
+              element={
+                <RoleRoute allow={['DOCENTE', 'SUPERADMIN', 'ADMINISTRACION']}>
+                  <AsistenciaPage />
                 </RoleRoute>
               }
             />

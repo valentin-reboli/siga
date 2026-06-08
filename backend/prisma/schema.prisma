@@ -203,6 +203,7 @@ model Inscripcion {
   actualizadoEn    DateTime          @updatedAt
 
   notasParciales   NotaParcial[]
+  asistencias      Asistencia[]
 
   @@unique([alumnoId, materiaId, tipo, cicloLectivo])
   @@index([alumnoId])
@@ -229,6 +230,35 @@ model NotaParcial {
   @@unique([inscripcionId, numero, tipo])
   @@index([inscripcionId])
   @@map("notas_parciales")
+}
+
+// Estado de asistencia de un alumno en una clase puntual.
+//   PRESENTE    -> asistió
+//   AUSENTE     -> no asistió (cuenta en contra del % de asistencia)
+//   JUSTIFICADO -> ausencia con justificación (no cuenta en contra)
+enum EstadoAsistencia {
+  PRESENTE
+  AUSENTE
+  JUSTIFICADO
+}
+
+// Asistencia de un alumno (vía su inscripción de cursada) en una fecha de clase.
+// El docente "toma asistencia" cada clase: una fila por alumno por fecha.
+model Asistencia {
+  id            String           @id @default(uuid())
+  inscripcionId String
+  inscripcion   Inscripcion      @relation(fields: [inscripcionId], references: [id], onDelete: Cascade)
+  fecha         DateTime         @db.Date
+  estado        EstadoAsistencia @default(PRESENTE)
+  observaciones String?
+  creadoEn      DateTime         @default(now())
+  actualizadoEn DateTime         @updatedAt
+
+  // Un alumno no puede tener dos registros para la misma fecha de clase.
+  @@unique([inscripcionId, fecha])
+  @@index([inscripcionId])
+  @@index([fecha])
+  @@map("asistencias")
 }
 
 model Constancia {

@@ -102,6 +102,44 @@ export interface NotaParcial {
   creadoEn: string;
 }
 
+export type EstadoAsistencia = 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADO';
+
+export interface AsistenciaAlumno {
+  id: string;
+  legajo: string;
+  nombre: string;
+  apellido: string;
+}
+
+export interface AsistenciaRosterItem {
+  inscripcionId: string;
+  alumno: AsistenciaAlumno;
+  estado: EstadoAsistencia | null;
+}
+
+export interface AsistenciaRoster {
+  materiaId: string;
+  cicloLectivo: number;
+  fecha: string | null;
+  items: AsistenciaRosterItem[];
+}
+
+export interface AsistenciaResumenItem {
+  inscripcionId: string;
+  alumno: AsistenciaAlumno;
+  presentes: number;
+  ausentes: number;
+  justificadas: number;
+  porcentaje: number | null;
+}
+
+export interface AsistenciaResumen {
+  materiaId: string;
+  cicloLectivo: number;
+  totalClases: number;
+  items: AsistenciaResumenItem[];
+}
+
 export interface Inscripcion {
   id: string;
   alumnoId: string;

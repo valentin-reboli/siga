@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ChevronDown,
   ChevronRight,
@@ -10,6 +11,7 @@ import {
   Users,
   Award,
   TrendingUp,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useApi } from '../hooks/useApi';
@@ -196,6 +198,16 @@ function MateriaCard({
             </div>
           ) : (
             <>
+              {/* Acciones de la materia */}
+              <div className="mb-3 flex items-center justify-end">
+                <Link
+                  to={`/asistencias/${materia.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-700 ring-1 ring-teal-100 transition-colors hover:bg-teal-100"
+                >
+                  <ClipboardCheck size={14} /> Tomar asistencia
+                </Link>
+              </div>
+
               {/* Buscador */}
               <div className="mb-3 flex items-center gap-2">
                 <input

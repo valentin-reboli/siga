@@ -36,7 +36,7 @@ export const authController = {
       if (!req.user) throw HttpError.unauthorized();
       await authService.changePassword(req.user.sub, req.body);
       await registrarAuditoria({
-        accion: AUDIT.UPDATE,
+        accion: AUDIT.USER_UPDATED,
         actorId: req.user.sub,
         actorEmail: req.user.email,
         targetId: req.user.sub,

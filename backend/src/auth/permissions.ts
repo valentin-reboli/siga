@@ -43,6 +43,10 @@ export const PERMISSIONS = {
   INSCRIPCIONES_VIEW_ALL: 'inscripciones:view_all',
   INSCRIPCIONES_GRADE: 'inscripciones:grade',
 
+  // Asistencias: tomar/cargar asistencia de una materia.
+  // El DOCENTE queda acotado a SUS materias (ownership check en el service).
+  ASISTENCIAS_TAKE: 'asistencias:take',
+
   // Constancias
   CONSTANCIAS_MANAGE: 'constancias:manage',
 
@@ -75,6 +79,7 @@ const ROLE_PERMISSIONS: Record<RolUsuario, Permission[]> = {
     PERMISSIONS.MATERIAS_MANAGE,
     PERMISSIONS.INSCRIPCIONES_VIEW_ALL,
     PERMISSIONS.INSCRIPCIONES_GRADE,
+    PERMISSIONS.ASISTENCIAS_TAKE,
     PERMISSIONS.CONSTANCIAS_MANAGE,
     PERMISSIONS.MATERIA_FORO_PUBLISH,
   ],
@@ -82,6 +87,8 @@ const ROLE_PERMISSIONS: Record<RolUsuario, Permission[]> = {
   [RolUsuario.DOCENTE]: [
     // El docente puede calificar, pero el controller lo acota a SUS materias.
     PERMISSIONS.INSCRIPCIONES_GRADE,
+    // Toma asistencia de SUS materias (ownership check en el service).
+    PERMISSIONS.ASISTENCIAS_TAKE,
     // Publica en el foro de SUS materias (ownership check en el controller).
     PERMISSIONS.MATERIA_FORO_PUBLISH,
   ],
