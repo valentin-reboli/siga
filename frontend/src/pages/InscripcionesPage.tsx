@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, CheckCircle2, XCircle, Clock3, Pencil, Search, Check, BookOpen, ClipboardList, Eye, EyeOff, Info } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, XCircle, Clock3, Pencil, Search, Check, BookOpen, ClipboardList, Eye, EyeOff, Info, Lock } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { alumnosApi } from '../api/alumnos.api';
@@ -231,6 +231,19 @@ interface TablaProps {
 }
 
 function TablaInscripciones({ items, onCancel }: TablaProps) {
+  const [cancelandoId, setCancelandoId] = useState<string | null>(null);
+  const [procesando, setProcesando] = useState(false);
+
+  async function confirmarCancel(id: string) {
+    setProcesando(true);
+    try {
+      await onCancel(id);
+    } finally {
+      setProcesando(false);
+      setCancelandoId(null);
+    }
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -265,12 +278,32 @@ function TablaInscripciones({ items, onCancel }: TablaProps) {
               <td className="py-3 px-2 text-slate-500">{formatDate(i.fechaInscripcion)}</td>
               <td className="py-3 px-2 text-right">
                 {i.estado !== 'CANCELADA' && i.estadoCursada !== 'APROBADA' && (
-                  <button
-                    onClick={() => onCancel(i.id)}
-                    className="text-slate-500 hover:text-danger inline-flex items-center gap-1 text-xs font-medium"
-                  >
-                    <Trash2 size={14} /> Cancelar
-                  </button>
+                  cancelandoId === i.id ? (
+                    <span className="inline-flex items-center gap-2 text-xs">
+                      <span className="text-slate-600 font-medium">¿Cancelar?</span>
+                      <button
+                        onClick={() => confirmarCancel(i.id)}
+                        disabled={procesando}
+                        className="font-semibold text-red-600 hover:underline disabled:opacity-50"
+                      >
+                        {procesando ? '…' : 'Sí'}
+                      </button>
+                      <button
+                        onClick={() => setCancelandoId(null)}
+                        disabled={procesando}
+                        className="text-slate-400 hover:text-slate-700"
+                      >
+                        No
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setCancelandoId(i.id)}
+                      className="text-slate-500 hover:text-danger inline-flex items-center gap-1 text-xs font-medium"
+                    >
+                      <Trash2 size={14} /> Cancelar
+                    </button>
+                  )
                 )}
               </td>
             </tr>
@@ -403,35 +436,40 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
 
   // Para mesa de examen: cargar el legajo y obtener los materiaIds con estado REGULAR
   const esMesa = tipo === 'MESA_EXAMEN';
+  // Se carga siempre: también se usa para validar correlativas en cursadas
   const legajo = useApi(
-    () => (esMesa ? alumnosApi.getLegajo(alumnoId) : Promise.resolve(null)),
-    [esMesa, alumnoId],
+    () => alumnosApi.getLegajo(alumnoId),
+    [alumnoId],
   );
 
-  // Set de materiaIds donde el estado más reciente es REGULAR
-  const regularIds = useMemo(() => {
-    if (!esMesa || !legajo.data) return null; // null = sin restricción (no cargado aún)
-    const historial = legajo.data.historial as Array<{
-      materiaId: string;
-      estadoCursada: string | null;
-      cicloLectivo: number;
-      tipo: string;
+  // Estado académico más reciente por materia (base para correlativas + filtro de mesa)
+  const { aprobadosSet, regularesSet } = useMemo(() => {
+    const aprobados = new Set<string>();
+    const regulares = new Set<string>();
+    if (!legajo.data) return { aprobadosSet: aprobados, regularesSet: regulares };
+    const hist = legajo.data.historial as Array<{
+      materiaId: string; estadoCursada: string | null; cicloLectivo: number; tipo: string;
     }>;
-    // Solo cursadas (no mesas), agrupar por materia y quedarse con la más reciente
     const porMateria = new Map<string, { ciclo: number; estado: string | null }>();
-    for (const h of historial) {
+    for (const h of hist) {
       if (h.tipo !== 'CURSADA') continue;
       const prev = porMateria.get(h.materiaId);
       if (!prev || h.cicloLectivo > prev.ciclo) {
         porMateria.set(h.materiaId, { ciclo: h.cicloLectivo, estado: h.estadoCursada });
       }
     }
-    const ids = new Set<string>();
     for (const [id, { estado }] of porMateria) {
-      if (estado === 'REGULAR') ids.add(id);
+      if (estado === 'APROBADA') { aprobados.add(id); regulares.add(id); }
+      else if (estado === 'REGULAR') regulares.add(id);
     }
-    return ids;
-  }, [esMesa, legajo.data]);
+    return { aprobadosSet: aprobados, regularesSet: regulares };
+  }, [legajo.data]);
+
+  // Para mesa: solo materias cuyo último estado es REGULAR (aún no aprobadas en final)
+  const regularIds = useMemo(() => {
+    if (!esMesa || !legajo.data) return null;
+    return regularesSet;
+  }, [esMesa, legajo.data, regularesSet]);
 
   const todasOpciones = useMemo(() => materias.data?.items ?? [], [materias.data]);
 
@@ -553,7 +591,7 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
             />
           </div>
 
-          {materias.loading || (esMesa && legajo.loading) ? (
+          {materias.loading || legajo.loading ? (
             <div className="py-8 text-center">
               <Spinner className="mx-auto" />
             </div>
@@ -601,6 +639,28 @@ function ModalNuevaInscripcion({ alumnoId, carrera, cicloLectivo, onClose, onCre
                               {m.codigo} ·{' '}
                               {m.cuatrimestre === 0 ? 'Anual' : `${m.cuatrimestre}° cuatr.`}
                             </span>
+                            {/* Correlativas no cumplidas (solo en cursadas) */}
+                            {!esMesa && legajo.data && (() => {
+                              const faltantes = (m.correlativasRequeridas ?? []).filter((c) =>
+                                c.tipo === 'APROBADA'
+                                  ? !aprobadosSet.has(c.requiereId)
+                                  : !regularesSet.has(c.requiereId),
+                              );
+                              if (faltantes.length === 0) return null;
+                              return (
+                                <span className="mt-1 flex flex-wrap gap-1">
+                                  {faltantes.map((c) => (
+                                    <span
+                                      key={c.requiereId}
+                                      className="inline-flex items-center gap-0.5 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                                    >
+                                      <Lock size={9} />
+                                      {c.requiere?.codigo ?? '—'} ({c.tipo === 'APROBADA' ? 'aprobada' : 'regular'})
+                                    </span>
+                                  ))}
+                                </span>
+                              );
+                            })()}
                           </span>
                           {sel && <Check size={16} className="shrink-0 text-navy-700" />}
                         </button>
