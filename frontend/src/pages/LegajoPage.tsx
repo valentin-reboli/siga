@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { Search, LayoutGrid, ChevronRight } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { alumnosApi } from '../api/alumnos.api';
@@ -10,7 +11,7 @@ import { FullPageLoader, Spinner } from '../components/ui/Spinner';
 import { ErrorAlert } from '../components/ui/ErrorAlert';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { formatDate } from '../utils/format';
-import type { Alumno, EstadoCursada } from '../types';
+import type { Alumno, EstadoCursada, Inscripcion } from '../types';
 
 export function LegajoPage() {
   const { usuario } = useAuth();
@@ -39,8 +40,20 @@ function LegajoPropio() {
   return (
     <div className="max-w-screen-xl mx-auto">
       <Breadcrumb items={[{ label: 'SIGA', to: '/' }, { label: 'Mi legajo académico' }]} />
-      <h1 className="font-serif text-2xl font-semibold text-navy-900 mb-1">Legajo académico</h1>
-      <p className="text-sm text-slate-500 mb-6">Información personal y trayectoria académica</p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-2xl font-semibold text-navy-900 mb-1">Legajo académico</h1>
+          <p className="text-sm text-slate-500">Información personal y trayectoria académica</p>
+        </div>
+        <Link
+          to="/plan"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-navy-700 shadow-sm hover:bg-slate-50 transition-colors"
+        >
+          <LayoutGrid size={15} />
+          Ver plan de estudios
+          <ChevronRight size={14} className="text-slate-400" />
+        </Link>
+      </div>
       <LegajoDetalle alumno={alumno} estadisticas={estadisticas} historial={historial} />
     </div>
   );
@@ -157,15 +170,58 @@ function LegajoDetalle({
     carrera: string; anioIngreso: number; estado: string;
   };
   estadisticas: { totalMaterias: number; aprobadas: number; regulares: number };
-  historial: Array<{
-    id: string; cicloLectivo: number; tipo: string;
-    estadoCursada: EstadoCursada | null; nota: number | null;
-    fechaInscripcion: string;
-    materia?: { nombre?: string; codigo?: string } | null;
-  }>;
+  historial: Inscripcion[];
 }) {
+  // ── Filtros del historial ────────────────────────────────────────────────
+  const [q, setQ] = useState('');
+  const [filterEstado, setFilterEstado] = useState<EstadoCursada | ''>('');
+  const [filterCiclo, setFilterCiclo] = useState<number | ''>('');
+
+  // ── Stats adicionales desde el historial ────────────────────────────────
+  const statsExtras = useMemo(() => {
+    // Por cada materia, quedarse con el estado más reciente (solo CURSADA)
+    const porMateria = new Map<string, { ciclo: number; estado: EstadoCursada | null }>();
+    for (const h of historial) {
+      if (h.tipo !== 'CURSADA') continue;
+      const prev = porMateria.get(h.materiaId);
+      if (!prev || h.cicloLectivo > prev.ciclo) {
+        porMateria.set(h.materiaId, { ciclo: h.cicloLectivo, estado: h.estadoCursada });
+      }
+    }
+    let reprobadas = 0;
+    let libres = 0;
+    for (const { estado } of porMateria.values()) {
+      if (estado === 'REPROBADA') reprobadas++;
+      else if (estado === 'LIBRE') libres++;
+    }
+    return { reprobadas, libres };
+  }, [historial]);
+
+  // ── Ciclos disponibles (para el filtro) ─────────────────────────────────
+  const ciclosDisponibles = useMemo(() => {
+    const s = new Set<number>();
+    for (const h of historial) s.add(h.cicloLectivo);
+    return [...s].sort((a, b) => b - a);
+  }, [historial]);
+
+  // ── Historial filtrado ───────────────────────────────────────────────────
+  const historialFiltrado = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return historial.filter((h) => {
+      if (term && !h.materia?.nombre?.toLowerCase().includes(term) && !h.materia?.codigo?.toLowerCase().includes(term)) return false;
+      if (filterEstado && h.estadoCursada !== filterEstado) return false;
+      if (filterCiclo !== '' && h.cicloLectivo !== filterCiclo) return false;
+      return true;
+    });
+  }, [historial, q, filterEstado, filterCiclo]);
+
+  const progreso = estadisticas.totalMaterias > 0
+    ? Math.round((estadisticas.aprobadas / estadisticas.totalMaterias) * 100)
+    : 0;
+
   return (
     <>
+      {/* ── Fila superior: datos personales + estadísticas ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 mb-6">
         <Card>
           <h3 className="font-semibold text-slate-900 mb-4">Datos personales</h3>
@@ -187,20 +243,112 @@ function LegajoDetalle({
         </Card>
 
         <Card>
-          <h3 className="font-semibold text-slate-900 mb-4">Estadísticas</h3>
-          <ul className="space-y-3">
-            <StatRow label="Total de materias" valor={estadisticas.totalMaterias} />
-            <StatRow label="Aprobadas" valor={estadisticas.aprobadas} tono="success" />
-            <StatRow label="Regulares" valor={estadisticas.regulares} tono="info" />
-          </ul>
+          <h3 className="font-semibold text-slate-900 mb-3">Avance de carrera</h3>
+
+          {/* Barra de progreso */}
+          <div className="mb-4">
+            <div className="flex justify-between text-xs text-slate-500 mb-1">
+              <span>{estadisticas.aprobadas} de {estadisticas.totalMaterias} materias aprobadas</span>
+              <span className="font-semibold text-emerald-600">{progreso}%</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                style={{ width: `${progreso}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Grid de stats */}
+          <div className="grid grid-cols-2 gap-2">
+            <StatChip
+              label="Aprobadas"
+              valor={estadisticas.aprobadas}
+              bg="bg-emerald-50"
+              text="text-emerald-700"
+            />
+            <StatChip
+              label="Regulares"
+              valor={estadisticas.regulares}
+              bg="bg-blue-50"
+              text="text-blue-700"
+            />
+            <StatChip
+              label="Reprobadas"
+              valor={statsExtras.reprobadas}
+              bg="bg-red-50"
+              text="text-red-700"
+            />
+            <StatChip
+              label="Libre"
+              valor={statsExtras.libres}
+              bg="bg-slate-100"
+              text="text-slate-600"
+            />
+          </div>
         </Card>
       </div>
 
+      {/* ── Historial académico con filtros ── */}
       <Card>
-        <h3 className="font-semibold text-slate-900 mb-4">Historial académico</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h3 className="font-semibold text-slate-900">Historial académico</h3>
+          <span className="text-xs text-slate-400">
+            {historialFiltrado.length === historial.length
+              ? `${historial.length} registros`
+              : `${historialFiltrado.length} de ${historial.length}`}
+          </span>
+        </div>
+
+        {/* Filtros */}
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <div className="flex-1">
+            <Input
+              placeholder="Buscar materia…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              leftIcon={<Search size={14} />}
+            />
+          </div>
+          <select
+            value={filterEstado}
+            onChange={(e) => setFilterEstado(e.target.value as EstadoCursada | '')}
+            className="form-input sm:max-w-[160px]"
+          >
+            <option value="">Todo estado</option>
+            <option value="APROBADA">Aprobada</option>
+            <option value="REGULAR">Regular</option>
+            <option value="EN_CURSO">En curso</option>
+            <option value="REPROBADA">Reprobada</option>
+            <option value="LIBRE">Libre</option>
+          </select>
+          <select
+            value={filterCiclo}
+            onChange={(e) => setFilterCiclo(e.target.value ? Number(e.target.value) : '')}
+            className="form-input sm:max-w-[120px]"
+          >
+            <option value="">Todo ciclo</option>
+            {ciclosDisponibles.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          {(q || filterEstado || filterCiclo !== '') && (
+            <button
+              onClick={() => { setQ(''); setFilterEstado(''); setFilterCiclo(''); }}
+              className="text-xs text-slate-500 hover:text-slate-900 whitespace-nowrap px-2"
+            >
+              Limpiar
+            </button>
+          )}
+        </div>
+
         {historial.length === 0 ? (
           <p className="text-sm text-slate-500 italic py-6 text-center">
             El historial está vacío.
+          </p>
+        ) : historialFiltrado.length === 0 ? (
+          <p className="text-sm text-slate-500 italic py-6 text-center">
+            No hay registros que coincidan con los filtros.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -216,7 +364,7 @@ function LegajoDetalle({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {historial.map((i) => (
+                {historialFiltrado.map((i) => (
                   <tr key={i.id} className="hover:bg-slate-50">
                     <td className="py-3 px-2 text-slate-700">{i.cicloLectivo}</td>
                     <td className="py-3 px-2">
@@ -251,17 +399,16 @@ function DatoLegajo({ label, valor }: { label: string; valor: React.ReactNode })
   );
 }
 
-function StatRow({
-  label, valor, tono = 'neutral',
+function StatChip({
+  label, valor, bg, text,
 }: {
-  label: string; valor: number; tono?: 'success' | 'info' | 'neutral';
+  label: string; valor: number; bg: string; text: string;
 }) {
-  const colores = { success: 'text-emerald-600', info: 'text-sky-600', neutral: 'text-slate-700' } as const;
   return (
-    <li className="flex items-center justify-between">
-      <span className="text-sm text-slate-600">{label}</span>
-      <span className={`font-serif text-xl font-semibold ${colores[tono]}`}>{valor}</span>
-    </li>
+    <div className={`rounded-lg px-3 py-2.5 ${bg}`}>
+      <p className={`text-xl font-serif font-semibold ${text}`}>{valor}</p>
+      <p className="text-[11px] text-slate-500 mt-0.5">{label}</p>
+    </div>
   );
 }
 
