@@ -28,7 +28,7 @@ export interface CreatedUserResult {
 }
 
 export const usuariosApi = {
-  list: (params: { rol?: RolUsuario; q?: string; page?: number; pageSize?: number } = {}) =>
+  list: (params: { rol?: RolUsuario; activo?: boolean; q?: string; page?: number; pageSize?: number } = {}) =>
     apiClient.get<Paginated<Usuario>>('/usuarios', { params }).then((r) => r.data),
 
   createAlumno: (data: CreateAlumnoPayload) =>
