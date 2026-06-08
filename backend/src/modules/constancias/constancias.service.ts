@@ -119,6 +119,25 @@ export const constanciasService = {
     });
   },
 
+  async cancelar(id: string, alumnoId: string | null) {
+    const constancia = await this.getById(id);
+    // Solo el alumno dueño (o staff) puede cancelar
+    if (alumnoId !== null && constancia.alumnoId !== alumnoId) {
+      throw HttpError.forbidden('No podés cancelar esta constancia');
+    }
+    if (constancia.estado === EstadoConstancia.EMITIDA) {
+      throw HttpError.conflict('No se puede cancelar una constancia ya emitida');
+    }
+    if (constancia.estado === EstadoConstancia.CANCELADA) {
+      throw HttpError.conflict('La constancia ya está cancelada');
+    }
+    return prisma.constancia.update({
+      where: { id },
+      data: { estado: EstadoConstancia.CANCELADA },
+      include: constanciaInclude,
+    });
+  },
+
   async verificar(codigo: string) {
     const constancia = await prisma.constancia.findUnique({
       where: { codigoVerificacion: codigo },

@@ -22,6 +22,9 @@ router.post('/', validate(createConstanciaSchema), constanciasController.create)
 router.get('/:id', constanciasController.getById);
 router.get('/:id/pdf', constanciasController.getPdf);
 
+// El alumno puede cancelar su propia solicitud pendiente.
+router.delete('/:id', constanciasController.cancelar);
+
 // Gestión (aprobar/rechazar/emitir): SUPERADMIN y ADMINISTRACION.
 const canManage = requirePermission(PERMISSIONS.CONSTANCIAS_MANAGE);
 router.patch('/:id', canManage, validate(updateConstanciaSchema), constanciasController.update);

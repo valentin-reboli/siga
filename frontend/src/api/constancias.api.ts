@@ -14,6 +14,9 @@ export const constanciasApi = {
       .get(`/constancias/${id}/pdf`, { responseType: 'blob' })
       .then((r) => r.data as Blob),
 
+  cancelar: (id: string) =>
+    apiClient.delete<Constancia>(`/constancias/${id}`).then((r) => r.data),
+
   emitir: (id: string) =>
     apiClient.post<Constancia>(`/constancias/${id}/emitir`).then((r) => r.data),
 

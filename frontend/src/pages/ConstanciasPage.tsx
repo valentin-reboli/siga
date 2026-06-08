@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Download, ShieldCheck, Send } from 'lucide-react';
+import { Plus, Download, ShieldCheck, Send, Trash2, X } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { alumnosApi } from '../api/alumnos.api';
@@ -15,13 +15,37 @@ import { extractErrorMessage } from '../api/client';
 import { formatDate } from '../utils/format';
 import type { TipoConstancia, EstadoConstancia, Constancia } from '../types';
 
-const TIPOS: { value: TipoConstancia; label: string }[] = [
-  { value: 'ALUMNO_REGULAR', label: 'Constancia de alumno regular' },
-  { value: 'ANALITICO_PARCIAL', label: 'Analítico parcial' },
-  { value: 'ANALITICO_FINAL', label: 'Analítico final' },
-  { value: 'EXAMEN_FINAL', label: 'Constancia de examen final' },
-  { value: 'TITULO_EN_TRAMITE', label: 'Título en trámite' },
-  { value: 'PROGRAMA_MATERIA', label: 'Programa de materia' },
+const TIPOS: { value: TipoConstancia; label: string; descripcion: string }[] = [
+  {
+    value: 'ALUMNO_REGULAR',
+    label: 'Constancia de alumno regular',
+    descripcion: 'Certifica que sos alumno activo de la institución. Requerida para trámites bancarios, laborales y beneficios.',
+  },
+  {
+    value: 'ANALITICO_PARCIAL',
+    label: 'Analítico parcial',
+    descripcion: 'Detalla las materias aprobadas hasta la fecha. Útil para transferencias o becas.',
+  },
+  {
+    value: 'ANALITICO_FINAL',
+    label: 'Analítico final',
+    descripcion: 'Historial académico completo al egreso. Requiere tener todas las materias aprobadas.',
+  },
+  {
+    value: 'EXAMEN_FINAL',
+    label: 'Constancia de examen final',
+    descripcion: 'Certifica que rendiste (y aprobaste) un examen final específico.',
+  },
+  {
+    value: 'TITULO_EN_TRAMITE',
+    label: 'Título en trámite',
+    descripcion: 'Certifica que el trámite de tu título está en curso. Solo disponible luego de egresar.',
+  },
+  {
+    value: 'PROGRAMA_MATERIA',
+    label: 'Programa de materia',
+    descripcion: 'Copia oficial del programa de una materia. Requerida para equivalencias en otras instituciones.',
+  },
 ];
 
 export function ConstanciasPage() {
@@ -105,7 +129,11 @@ export function ConstanciasPage() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {constancias.data.items.map((c) => (
-              <ItemConstanciaAlumno key={c.id} constancia={c} />
+              <ItemConstanciaAlumno
+                key={c.id}
+                constancia={c}
+                onCancelada={() => constancias.reload()}
+              />
             ))}
           </ul>
         )}
@@ -223,8 +251,17 @@ function ItemConstanciaAdmin({
 
 // ── Item constancia para alumno ───────────────────────────────────────────────
 
-function ItemConstanciaAlumno({ constancia }: { constancia: Constancia }) {
+function ItemConstanciaAlumno({
+  constancia,
+  onCancelada,
+}: {
+  constancia: Constancia;
+  onCancelada: () => void;
+}) {
   const [bajando, setBajando] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const label = TIPOS.find((t) => t.value === constancia.tipo)?.label ?? constancia.tipo;
 
   async function descargar() {
@@ -242,34 +279,86 @@ function ItemConstanciaAlumno({ constancia }: { constancia: Constancia }) {
     }
   }
 
+  async function handleCancelar() {
+    setError(null);
+    setCancelando(true);
+    try {
+      await constanciasApi.cancelar(constancia.id);
+      onCancelada();
+    } catch (err) {
+      setError(extractErrorMessage(err, 'No se pudo cancelar'));
+      setConfirmando(false);
+    } finally {
+      setCancelando(false);
+    }
+  }
+
+  const puedeCancel = constancia.estado === 'SOLICITADA' || constancia.estado === 'EN_PROCESO';
+
   return (
-    <li className="flex items-center justify-between py-4">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <h4 className="font-semibold text-slate-900">{label}</h4>
-          <EstadoConstanciaChip estado={constancia.estado} />
+    <li className="py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <h4 className="font-semibold text-slate-900">{label}</h4>
+            <EstadoConstanciaChip estado={constancia.estado} />
+          </div>
+          <p className="text-xs text-slate-500">
+            Solicitada el {formatDate(constancia.fechaSolicitud)}
+            {constancia.fechaEmision && ` · Emitida el ${formatDate(constancia.fechaEmision)}`}
+          </p>
+          {/* Código solo visible cuando ya fue emitida */}
+          {constancia.estado === 'EMITIDA' && (
+            <p className="text-xs text-slate-500 mt-1 inline-flex items-center gap-1.5">
+              <ShieldCheck size={12} /> Código:{' '}
+              <code className="font-mono text-slate-700">{constancia.codigoVerificacion}</code>
+            </p>
+          )}
+          {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
         </div>
-        <p className="text-xs text-slate-500">
-          Solicitada el {formatDate(constancia.fechaSolicitud)}
-          {constancia.fechaEmision && ` · Emitida el ${formatDate(constancia.fechaEmision)}`}
-        </p>
-        <p className="text-xs text-slate-500 mt-1 inline-flex items-center gap-1.5">
-          <ShieldCheck size={12} /> Código de verificación:{' '}
-          <code className="font-mono text-slate-700">{constancia.codigoVerificacion}</code>
-        </p>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {constancia.estado === 'EMITIDA' ? (
+            <Button
+              variant="secondary"
+              onClick={descargar}
+              disabled={bajando}
+              leftIcon={<Download size={14} />}
+            >
+              {bajando ? <Spinner size={14} /> : 'Descargar PDF'}
+            </Button>
+          ) : puedeCancel ? (
+            confirmando ? (
+              <span className="inline-flex items-center gap-2 text-xs">
+                <span className="text-slate-600 font-medium">¿Cancelar solicitud?</span>
+                <button
+                  onClick={handleCancelar}
+                  disabled={cancelando}
+                  className="font-semibold text-red-600 hover:underline disabled:opacity-50"
+                >
+                  {cancelando ? '…' : 'Sí'}
+                </button>
+                <button
+                  onClick={() => setConfirmando(false)}
+                  disabled={cancelando}
+                  className="text-slate-400 hover:text-slate-700"
+                >
+                  No
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => setConfirmando(true)}
+                className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-red-600 transition-colors"
+              >
+                <X size={13} /> Cancelar solicitud
+              </button>
+            )
+          ) : (
+            <span className="text-xs text-slate-400 italic">Pendiente de emisión</span>
+          )}
+        </div>
       </div>
-      {constancia.estado === 'EMITIDA' ? (
-        <Button
-          variant="secondary"
-          onClick={descargar}
-          disabled={bajando}
-          leftIcon={<Download size={14} />}
-        >
-          {bajando ? <Spinner size={14} /> : 'Descargar PDF'}
-        </Button>
-      ) : (
-        <span className="text-xs text-slate-400 italic">Pendiente de emisión</span>
-      )}
     </li>
   );
 }
@@ -342,7 +431,9 @@ function ModalNuevaConstancia({ alumnoId, carrera, onClose, onCreada }: ModalPro
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <h3 className="font-serif text-xl font-semibold text-navy-900">Nueva constancia</h3>
         <p className="text-sm text-slate-500 mb-4">
-          Tu solicitud quedará pendiente de aprobación administrativa.
+          Tu solicitud quedará pendiente. El personal administrativo la procesa en{' '}
+          <strong className="text-slate-700">2 a 5 días hábiles</strong>. Recibirás la
+          constancia disponible para descargar una vez emitida.
         </p>
         {error && <div className="mb-3"><ErrorAlert message={error} /></div>}
         <div className="space-y-3">
@@ -357,6 +448,13 @@ function ModalNuevaConstancia({ alumnoId, carrera, onClose, onCreada }: ModalPro
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
+            {/* Descripción del tipo seleccionado */}
+            {(() => {
+              const desc = TIPOS.find((t) => t.value === tipo)?.descripcion;
+              return desc ? (
+                <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">{desc}</p>
+              ) : null;
+            })()}
           </div>
 
           {/* Selector de materia: solo para PROGRAMA_MATERIA */}

@@ -99,6 +99,21 @@ export const constanciasController = {
     }
   },
 
+  async cancelar(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) throw HttpError.unauthorized();
+      // Staff puede cancelar cualquiera; alumno solo la suya
+      let alumnoId: string | null = null;
+      if (req.user.rol === RolUsuario.ALUMNO) {
+        const propio = await alumnosService.getByUsuarioId(req.user.sub);
+        alumnoId = propio.id;
+      }
+      res.json(await constanciasService.cancelar(req.params.id, alumnoId));
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async verificar(req: Request, res: Response, next: NextFunction) {
     try {
       res.json(await constanciasService.verificar(req.params.codigo));
