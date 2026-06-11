@@ -6,15 +6,27 @@ Sistema Integral de Gestión Académica desarrollado para el Instituto Superior 
 
 Aplicación web para la gestión de alumnos, materias, inscripciones, legajos digitales, constancias y aulas virtuales.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript\&logoColor=white)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js\&logoColor=white)](https://nodejs.org/)
-[![Express](https://img.shields.io/badge/Express-4-000000?logo=express\&logoColor=white)](https://expressjs.com/)
-[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma\&logoColor=white)](https://www.prisma.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql\&logoColor=white)](https://neon.tech/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react\&logoColor=black)](https://react.dev/)
-[![Railway](https://img.shields.io/badge/Railway-Deploy-0B0D0E?logo=railway\&logoColor=white)](https://railway.app/)
+---
 
-**Aplicación:** https://siga-sistema.up.railway.app
+### Tecnologías
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)](https://neon.tech/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Railway](https://img.shields.io/badge/Railway-Deploy-0B0D0E?logo=railway&logoColor=white)](https://railway.app/)
+
+---
+
+### Demo
+
+**Aplicación:**  
+https://siga-sistema.up.railway.app
+
+**Video demostración:**  
+https://drive.google.com/file/d/1VJ5Ew7BT9AtulhnI34M1VlHlxBzjWB2k/view?usp=sharing
 
 </div>
 
