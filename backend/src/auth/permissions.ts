@@ -3,7 +3,6 @@ import { RolUsuario } from '@prisma/client';
 import { HttpError } from '../utils/httpError';
 
 /**
- * ============================================================================
  *  RBAC
  *  Roles:
  *    SUPERADMIN     -> control total
