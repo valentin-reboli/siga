@@ -4,15 +4,9 @@ import { HttpError } from '../utils/httpError';
 
 /**
  * ============================================================================
- *  RBAC central de SIGA
- * ============================================================================
- *  Única fuente de verdad de "qué puede hacer cada rol".
- *  En lugar de repetir `requireRole(ADMIN, ADMINISTRATIVO, ...)` en cada
- *  archivo de rutas (que se desincronizaba), definimos permisos atómicos y
- *  un mapa rol -> permisos. Las rutas piden permisos, no roles.
- *
- *  Roles (consolidados a 4):
- *    SUPERADMIN     -> control total (God Mode)
+ *  RBAC
+ *  Roles:
+ *    SUPERADMIN     -> control total
  *    ADMINISTRACION -> gestión académica + preceptoría
  *    DOCENTE        -> acotado a sus materias asignadas
  *    ALUMNO         -> su propia información
