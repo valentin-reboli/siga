@@ -13,17 +13,16 @@ import {
 
 const router = Router();
 
-// Todo el foro requiere estar autenticado.
+
 router.use(authenticate);
 
-// Gate de escritura: habilita publicar/comentar/subir material.
-// El ownership fino (docente solo en SUS materias) lo aplica el service.
+
 const canPublish = requirePermission(PERMISSIONS.MATERIA_FORO_PUBLISH);
 
-// ── Agenda del usuario (dashboard) ────────────────────────────────────────
+
 router.get('/agenda', foroController.agenda);
 
-// ── Feed por materia ──────────────────────────────────────────────────────
+
 router.get(
   '/materias/:materiaId/publicaciones',
   validate(listPublicacionesQuerySchema, 'query'),
