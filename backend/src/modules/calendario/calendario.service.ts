@@ -15,18 +15,11 @@ export interface EventoCalendario {
 }
 
 export const calendarioService = {
-  /**
-   * Eventos del calendario para el usuario, dentro de un rango opcional:
-   *   - EXAMEN: publicaciones de tipo EXAMEN del foro de sus materias.
-   *   - MESA:   mesas de examen (inscripciones MESA_EXAMEN con fecha).
-   *
-   * El alcance depende del rol (alumno → lo suyo, docente → sus materias,
-   * staff → todo), reutilizando la lógica de materias accesibles del foro.
-   */
+ 
   async eventos(user: JwtPayload, desde?: Date, hasta?: Date): Promise<EventoCalendario[]> {
     const materiaIds = await foroService.materiasAccesibles(user);
 
-    // Filtro de fecha reutilizable. Si no hay rango, sólo excluye nulos.
+
     const fechaFilter: Prisma.DateTimeNullableFilter = {};
     if (desde) fechaFilter.gte = desde;
     if (hasta) fechaFilter.lte = hasta;
@@ -34,7 +27,7 @@ export const calendarioService = {
 
     const eventos: EventoCalendario[] = [];
 
-    // ── Exámenes del foro ────────────────────────────────────────────────
+   
     if (materiaIds.length > 0) {
       const examenes = await prisma.publicacion.findMany({
         where: { materiaId: { in: materiaIds }, tipo: 'EXAMEN', fechaExamen: fechaFilter },
@@ -59,7 +52,7 @@ export const calendarioService = {
       }
     }
 
-    // ── Mesas de examen ──────────────────────────────────────────────────
+
     const whereMesa: Prisma.InscripcionWhereInput = {
       tipo: 'MESA_EXAMEN',
       fechaExamen: fechaFilter,
@@ -76,7 +69,6 @@ export const calendarioService = {
       if (materiaIds.length === 0) return ordenar(eventos);
       whereMesa.materiaId = { in: materiaIds };
     }
-    // SUPERADMIN / ADMINISTRACION: ven todas las mesas.
 
     const mesas = await prisma.inscripcion.findMany({
       where: whereMesa,
