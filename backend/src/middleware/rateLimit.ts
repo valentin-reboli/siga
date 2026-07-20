@@ -1,11 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { HttpError } from '../utils/httpError';
 
-/**
- * Rate limiter en memoria, sin dependencias externas.
- * Suficiente para mitigar fuerza bruta en /login en un despliegue de instancia
- * única. Para producción multi-instancia conviene migrar a Redis.
- */
+
 interface Bucket {
   count: number;
   resetAt: number;
