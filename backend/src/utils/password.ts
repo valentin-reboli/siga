@@ -10,11 +10,7 @@ export async function comparePassword(plain: string, hash: string): Promise<bool
   return bcrypt.compare(plain, hash);
 }
 
-/**
- * Genera una contraseña temporal siguiendo el estándar institucional:
- * [inicial_nombre][apellido_sin_espacios][4 dígitos aleatorios]
- * Ejemplo: Juan Pérez → jperez4821
- */
+
 export function generatePassword(nombre: string, apellido: string): string {
   const inicial = nombre.trim().toLowerCase().charAt(0);
   const ape = apellido.trim().toLowerCase()
