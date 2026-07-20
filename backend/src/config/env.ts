@@ -12,11 +12,9 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   BCRYPT_SALT_ROUNDS: z.coerce.number().default(10),
 
-  // Carpeta donde se guardan los archivos subidos al foro.
-  // En local: ./uploads. En Railway: montar un Volume y apuntar acá
-  // (ej. UPLOAD_DIR=/data/uploads).
+
   UPLOAD_DIR: z.string().default('./uploads'),
-  // Tamaño máximo por archivo, en MB.
+
   MAX_UPLOAD_MB: z.coerce.number().int().min(1).max(200).default(20),
 });
 
