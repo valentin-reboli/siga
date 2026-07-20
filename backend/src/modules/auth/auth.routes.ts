@@ -8,16 +8,15 @@ import { changePasswordSchema, loginSchema, registerSchema } from './auth.schema
 
 const router = Router();
 
-// Login público — con rate limit para mitigar fuerza bruta.
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // 10 intentos por IP por ventana
+  max: 10, // 10 intentos por IP 
   message: 'Demasiados intentos de inicio de sesión. Esperá unos minutos.',
 });
 router.post('/login', loginLimiter, validate(loginSchema), authController.login);
 
-// Registro genérico: solo SUPERADMIN (evita escalada de privilegios).
-// El alta normal de usuarios va por /api/usuarios (alumnos/staff).
+
 router.post(
   '/register',
   authenticate,
